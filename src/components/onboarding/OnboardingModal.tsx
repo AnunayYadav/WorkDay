@@ -30,9 +30,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [fullName, setFullName] = useState(initialData?.fullName || '');
   const [preferredName, setPreferredName] = useState(initialData?.preferredName || '');
   const [handle, setHandle] = useState(initialData?.handle || '');
-  const [empId] = useState(initialData?.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [empId, setEmpId] = useState(initialData?.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`);
   
-  const [activeDept, setActiveDept] = useState<DeptCategory>('engineering');
+  const [activeDept, setActiveDept] = useState<DeptCategory>(
+    (initialData?.department as DeptCategory) || 'engineering'
+  );
   const availableRoles = (PROBLEMS_DATASET.DEPARTMENT_ROLES[activeDept] || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering) as unknown as DepartmentRole[];
   const [selectedRole, setSelectedRole] = useState<DepartmentRole>(
     initialData?.selectedRole || availableRoles[0]
@@ -69,6 +71,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       if (initialData.fullName) setFullName(initialData.fullName);
       if (initialData.preferredName) setPreferredName(initialData.preferredName);
       if (initialData.handle) setHandle(initialData.handle);
+      if (initialData.empId) setEmpId(initialData.empId);
+      if (initialData.department && (initialData.department in PROBLEMS_DATASET.DEPARTMENT_ROLES)) {
+        setActiveDept(initialData.department as DeptCategory);
+      }
       if (initialData.selectedRole) setSelectedRole(initialData.selectedRole);
       if (initialData.signatureDataUrl) setSignatureUrl(initialData.signatureDataUrl);
       if (initialData.isSigned !== undefined) setIsSigned(initialData.isSigned);
@@ -513,7 +519,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       </tr>
                       <tr>
                         <td className="col-label">Corporate Email Allotted</td>
-                        <td className="col-val mono" style={{ color: '#0284c7', fontWeight: 600 }}>
+                        <td className="col-val mono" style={{ color: '#0f172a', fontWeight: 600 }}>
                           {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@virtualhq.corp
                         </td>
                       </tr>
@@ -778,7 +784,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       </div>
                       <div className="id-field">
                         <span className="id-label">ALLOTTED CORPORATE EMAIL</span>
-                        <span className="id-emp-role mono" style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
+                        <span className="id-emp-role mono" style={{ fontSize: '0.74rem', color: '#f4f4f5', fontWeight: 600 }}>
                           {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@virtualhq.corp
                         </span>
                       </div>

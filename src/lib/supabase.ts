@@ -207,28 +207,63 @@ export const CloudStorage = {
         const { data: { user } } = await supabase.auth.getUser();
         const effectiveUserId = data.userId || user?.id;
 
-        const { error } = await supabase.from('profiles').upsert({
-          user_id: effectiveUserId,
-          emp_id: data.empId,
-          full_name: data.fullName,
-          preferred_name: data.preferredName,
-          handle: data.handle,
-          department: data.department,
-          role_title: data.selectedRole?.title,
-          role_level: data.selectedRole?.level,
-          is_signed: data.isSigned,
-          signature_url: data.signatureDataUrl,
-          auth_provider: data.authProvider || 'email',
-          avatar_url: data.avatarUrl || '',
-          email: data.email || user?.email || '',
-          corporate_email: data.corporateEmail || '',
-          github_username: data.githubUsername || data.handle || '',
-          total_xp: data.totalXp || 200,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'emp_id' });
+        if (effectiveUserId) {
+          // Check for existing profile by user_id to update primary record without conflict errors
+          const { data: existingRows } = await supabase
+            .from('profiles')
+            .select('id, emp_id')
+            .eq('user_id', effectiveUserId)
+            .order('updated_at', { ascending: false });
 
-        if (error) {
-          console.error('[Supabase Cloud] Error upserting employee profile:', error.message);
+          const establishedEmpId = data.empId || (existingRows && existingRows[0]?.emp_id) || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`;
+
+          const profilePayload = {
+            user_id: effectiveUserId,
+            emp_id: establishedEmpId,
+            full_name: data.fullName || 'Engineering Recruit',
+            preferred_name: data.preferredName || (data.fullName ? data.fullName.split(' ')[0] : 'Engineer'),
+            handle: data.handle || 'engineer',
+            department: data.department || 'engineering',
+            role_title: data.selectedRole?.title || 'Frontend Developer (Junior)',
+            role_level: data.selectedRole?.level || 'LEVEL 1 · JUNIOR',
+            is_signed: Boolean(data.isSigned),
+            signature_url: data.signatureDataUrl || '',
+            auth_provider: data.authProvider || (user?.app_metadata?.provider as any) || 'email',
+            avatar_url: data.avatarUrl || '',
+            email: data.email || user?.email || '',
+            corporate_email: data.corporateEmail || `${data.handle || 'engineer'}@virtualhq.corp`,
+            github_username: data.githubUsername || data.handle || '',
+            total_xp: data.totalXp ?? 200,
+            updated_at: new Date().toISOString()
+          };
+
+          if (existingRows && existingRows.length > 0) {
+            const primaryId = existingRows[0].id;
+            const { error: updateErr } = await supabase
+              .from('profiles')
+              .update(profilePayload)
+              .eq('id', primaryId);
+
+            if (updateErr) {
+              console.error('[Supabase Cloud] Error updating profile by id:', updateErr.message);
+            }
+
+            // Clean up any stale duplicate profiles for this user_id
+            if (existingRows.length > 1) {
+              const extraIds = existingRows.slice(1).map(r => r.id);
+              await supabase.from('profiles').delete().in('id', extraIds);
+            }
+          } else {
+            const { error: insertErr } = await supabase
+              .from('profiles')
+              .insert(profilePayload);
+
+            if (insertErr) {
+              console.error('[Supabase Cloud] Error inserting employee profile:', insertErr.message);
+              // Fallback upsert on emp_id
+              await supabase.from('profiles').upsert(profilePayload, { onConflict: 'emp_id' });
+            }
+          }
         }
       } catch (e) {
         console.error('[Supabase Cloud] Profile sync error:', e);
@@ -244,7 +279,8 @@ export const CloudStorage = {
 
   /**
    * Fetch authenticated employee profile directly from Supabase.
-   * STRICT: Returns null if no active Supabase user session exists (NO dummy fallbacks).
+   * STRICT: Returns null if no active Supabase user session exists.
+   * Resolves roles dynamically across all department tracks.
    */
   async getEmployee(): Promise<EmployeeState | null> {
     if (!isSupabaseConfigured) {
@@ -254,7 +290,6 @@ export const CloudStorage = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // No authenticated session in Supabase — purge any stale local cache
         try {
           localStorage.removeItem('vhq_active_emp');
           sessionStorage.removeItem('vhq_active_emp');
@@ -262,46 +297,79 @@ export const CloudStorage = {
         return null;
       }
 
-      // Query live profile by user_id
-      const { data, error } = await supabase
+      // Query live profiles ordered by latest update (avoids single/maybeSingle multi-row crash)
+      const { data: rows, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .order('updated_at', { ascending: false });
 
-      if (!error && data) {
-        const role = PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering.find(r => r.title === data.role_title) 
-          || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0];
+      if (error) {
+        console.error('[Supabase Cloud] Error fetching user profile:', error.message);
+      }
+
+      if (rows && rows.length > 0) {
+        const data = rows[0];
+
+        // Clean up redundant duplicate rows if any exist
+        if (rows.length > 1) {
+          const duplicateIds = rows.slice(1).map(r => r.id);
+          supabase.from('profiles').delete().in('id', duplicateIds).then(() => {});
+        }
+
+        // Dynamically find role across all departments (engineering, infrastructure, data, product)
+        const deptKey = (data.department && data.department in PROBLEMS_DATASET.DEPARTMENT_ROLES)
+          ? (data.department as keyof typeof PROBLEMS_DATASET.DEPARTMENT_ROLES)
+          : 'engineering';
+        const deptRoles = (PROBLEMS_DATASET.DEPARTMENT_ROLES as any)[deptKey] || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering;
+        const allRoles = Object.values(PROBLEMS_DATASET.DEPARTMENT_ROLES).flat() as any[];
+
+        const role = deptRoles.find((r: any) => r.title === data.role_title)
+          || allRoles.find((r: any) => r.title === data.role_title)
+          || deptRoles[0];
 
         const meta = user.user_metadata || {};
         const profileEmp: EmployeeState = {
-          fullName: data.full_name,
-          preferredName: data.preferred_name,
-          handle: data.handle,
+          fullName: data.full_name || meta.full_name || meta.name || 'Engineering Recruit',
+          preferredName: data.preferred_name || (data.full_name ? data.full_name.split(' ')[0] : 'Engineer'),
+          handle: data.handle || meta.user_name || 'engineer',
           empId: data.emp_id,
-          department: data.department,
+          department: data.department || deptKey,
           selectedRole: role,
           signatureDataUrl: data.signature_url || '',
           isSigned: Boolean(data.is_signed),
-          currentStep: data.is_signed ? 4 : 1,
+          currentStep: data.is_signed ? 5 : 1,
           email: data.email || user.email,
-          corporateEmail: data.corporate_email || meta.corporate_email || '',
+          corporateEmail: data.corporate_email || meta.corporate_email || `${data.handle || 'engineer'}@virtualhq.corp`,
           githubUsername: data.github_username || meta.github_username || data.handle || '',
-          avatarUrl: data.avatar_url || meta.avatar_url || '',
-          authProvider: data.auth_provider || 'email',
+          avatarUrl: data.avatar_url || meta.avatar_url || (data.github_username ? `https://github.com/${data.github_username}.png` : ''),
+          authProvider: data.auth_provider || (user.app_metadata?.provider as any) || 'email',
           userId: data.user_id,
           userType: 'employee',
-          totalXp: data.total_xp || 200
+          totalXp: data.total_xp ?? 200
         };
 
         try {
           localStorage.setItem('vhq_active_emp', JSON.stringify(profileEmp));
+          sessionStorage.setItem('vhq_active_emp', JSON.stringify(profileEmp));
         } catch (_) {}
         return profileEmp;
       }
     } catch (e) {
       console.error('[Supabase Cloud] Error fetching user profile:', e);
     }
+
+    // Check if valid cached state exists for current user
+    try {
+      const cachedStr = localStorage.getItem('vhq_active_emp');
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr) as EmployeeState;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && (cached.userId === user.id || cached.email === user.email)) {
+          return cached;
+        }
+      }
+    } catch (_) {}
 
     return null;
   },
