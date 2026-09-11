@@ -22,7 +22,8 @@
   --border-subtle: rgba(255, 255, 255, 0.14);
   --border-active: #ffffff;
 
-  --font-premium: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  --font-premium: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -35,6 +36,7 @@
 html {
   background-color: var(--video-top-bg);
   scroll-behavior: smooth;
+  font-family: var(--font-premium);
 }
 
 body {
@@ -42,6 +44,18 @@ body {
   font-family: var(--font-premium);
   color: var(--text-white);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure ALL interactive form controls, buttons, and typography inherit and enforce Plus Jakarta Sans */
+button, input, optgroup, select, textarea, [role="button"], a {
+  font-family: var(--font-premium);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, p, span, div, label, li, dt, dd {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

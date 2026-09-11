@@ -186,7 +186,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           color: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif'
+          fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
         }}
       >
         {/* Apple Style Round Close Button */}
