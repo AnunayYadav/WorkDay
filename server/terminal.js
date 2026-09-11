@@ -2,19 +2,38 @@ import { WebSocketServer } from 'ws';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import fs from 'node:fs';
 
 const PORT = 8082;
 const wss = new WebSocketServer({ port: PORT });
 
 console.log(`\x1b[36m[VirtualHQ Terminal Bridge]\x1b[0m Service started on ws://localhost:${PORT}`);
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   const isWindows = process.platform === 'win32';
   const shell = isWindows ? 'powershell.exe' : (process.env.SHELL || 'bash');
   const args = isWindows ? ['-NoLogo'] : [];
-  const cwd = process.cwd();
 
-  console.log(`\x1b[32m[VirtualHQ Terminal Bridge]\x1b[0m Client connected. Spawning shell: ${shell} in ${cwd}`);
+  // Parse target repo name from query string or default to active workspace
+  let repoName = 'workspace';
+  try {
+    const reqUrl = new URL(req.url || '', 'http://localhost');
+    const paramRepo = reqUrl.searchParams.get('repo');
+    if (paramRepo) {
+      repoName = paramRepo.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    }
+  } catch (_) {}
+
+  // Create real workspace folder on disk for this repository
+  const workspacesRoot = path.resolve('workspaces');
+  const cwd = path.join(workspacesRoot, repoName);
+  try {
+    fs.mkdirSync(cwd, { recursive: true });
+  } catch (e) {
+    console.error(`Failed to create workspace directory: ${cwd}`, e);
+  }
+
+  console.log(`\x1b[32m[VirtualHQ Terminal Bridge]\x1b[0m Client connected for repo "${repoName}". Spawning shell: ${shell} in ${cwd}`);
 
   const ptyProcess = spawn(shell, args, {
     cwd,
@@ -29,7 +48,6 @@ wss.on('connection', (ws) => {
     if (ws.readyState === ws.OPEN) {
       let str = data.toString('utf-8');
       if (isWindows) {
-        // Convert raw backspaces (\x08) to VT100 erase sequence (\b \b) so xterm visually clears character
         str = str.replace(/\x08/g, '\b \b');
       }
       ws.send(str);
@@ -66,11 +84,46 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       let msgStr = message.toString();
-      // Check if message is a JSON control frame (like resize)
-      if (msgStr.startsWith('{') && msgStr.includes('"type"')) {
-        return;
+
+      // Handle JSON control frames (file sync, writes, deletes)
+      if (msgStr.startsWith('{')) {
+        try {
+          const payload = JSON.parse(msgStr);
+
+          // Full workspace files sync
+          if (payload.type === 'sync_files' && payload.files) {
+            for (const [relPath, item] of Object.entries(payload.files)) {
+              if (!relPath || typeof relPath !== 'string') continue;
+              const fullPath = path.join(cwd, relPath);
+              fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+              fs.writeFileSync(fullPath, item.content || '', 'utf-8');
+            }
+            return;
+          }
+
+          // Single file write/update
+          if (payload.type === 'write_file' && payload.path) {
+            const fullPath = path.join(cwd, payload.path);
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+            fs.writeFileSync(fullPath, payload.content || '', 'utf-8');
+            return;
+          }
+
+          // Delete file
+          if (payload.type === 'delete_file' && payload.path) {
+            const fullPath = path.join(cwd, payload.path);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+            }
+            return;
+          }
+
+          if (payload.type === 'resize') {
+            return;
+          }
+        } catch (_) {}
       }
-      
+
       // Enter key - reset line counter
       if (msgStr === '\r' || msgStr === '\n' || msgStr === '\r\n') {
         currentLineChars = 0;
@@ -88,7 +141,6 @@ wss.on('connection', (ws) => {
             ptyProcess.stdin.write(isWindows ? '\x08' : '\x7f');
           }
         }
-        // At start of prompt (0 characters typed), ignore so PowerShell never hangs
         return;
       }
 
@@ -112,11 +164,11 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    console.log(`\x1b[33m[VirtualHQ Terminal Bridge]\x1b[0m Client disconnected. Terminating shell process.`);
+    console.log(`\x1b[33m[VirtualHQ Terminal Bridge]\x1b[0m Client disconnected. Terminating shell.`);
     try {
       ptyProcess.kill();
     } catch (e) {
-      // Process might already be dead
+      // ignore
     }
   });
 
