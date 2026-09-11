@@ -23,6 +23,181 @@ interface FileItem {
   originalContent?: string;
 }
 
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  isFolder: boolean;
+  children?: FileTreeNode[];
+}
+
+export function detectLanguage(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase() || '';
+  if (['ts', 'tsx'].includes(ext)) return 'typescript';
+  if (['js', 'jsx', 'mjs', 'cjs'].includes(ext)) return 'javascript';
+  if (ext === 'json') return 'json';
+  if (['md', 'markdown'].includes(ext)) return 'markdown';
+  if (['css', 'scss', 'sass', 'less'].includes(ext)) return 'css';
+  if (['html', 'htm'].includes(ext)) return 'html';
+  if (ext === 'py') return 'python';
+  if (['yaml', 'yml'].includes(ext)) return 'yaml';
+  if (['sh', 'bash'].includes(ext)) return 'shell';
+  if (ext === 'sql') return 'sql';
+  if (['xml', 'svg'].includes(ext)) return 'xml';
+  return 'plaintext';
+}
+
+export function buildFileTree(paths: string[]): FileTreeNode[] {
+  const root: { children: Record<string, any> } = { children: {} };
+
+  for (const p of paths) {
+    const cleanPath = p.replace(/^\/+/, '');
+    if (!cleanPath) continue;
+    const parts = cleanPath.split('/');
+    let curr = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isFile = (i === parts.length - 1);
+      const currPath = parts.slice(0, i + 1).join('/');
+
+      if (!curr.children[part]) {
+        curr.children[part] = {
+          name: part,
+          path: currPath,
+          isFolder: !isFile,
+          children: isFile ? undefined : {}
+        };
+      }
+      curr = curr.children[part];
+    }
+  }
+
+  function toSortedArray(nodeChildren?: Record<string, any>): FileTreeNode[] {
+    if (!nodeChildren) return [];
+    return Object.values(nodeChildren)
+      .map(child => ({
+        name: child.name,
+        path: child.path,
+        isFolder: child.isFolder,
+        children: child.isFolder ? toSortedArray(child.children) : undefined
+      }))
+      .sort((a, b) => {
+        if (a.isFolder && !b.isFolder) return -1;
+        if (!a.isFolder && b.isFolder) return 1;
+        return a.name.localeCompare(b.name);
+      });
+  }
+
+  return toSortedArray(root.children);
+}
+
+interface FileTreeItemProps {
+  node: FileTreeNode;
+  depth: number;
+  expandedFolders: Record<string, boolean>;
+  onToggleFolder: (path: string) => void;
+  activeFileName: string;
+  files: Record<string, FileItem>;
+  loadingFilePath: string | null;
+  onSelectFile: (filePath: string, fileName: string) => void;
+}
+
+const FileTreeItem: React.FC<FileTreeItemProps> = ({
+  node,
+  depth,
+  expandedFolders,
+  onToggleFolder,
+  activeFileName,
+  files,
+  loadingFilePath,
+  onSelectFile
+}) => {
+  const isExpanded = !!expandedFolders[node.path];
+  const isActive = activeFileName === node.path || activeFileName === node.name;
+  const isModified = files[node.path]?.content !== undefined && files[node.path]?.originalContent !== undefined && files[node.path]?.content !== files[node.path]?.originalContent;
+  const isLoading = loadingFilePath === node.path;
+
+  if (node.isFolder) {
+    return (
+      <div>
+        <div
+          onClick={() => onToggleFolder(node.path)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.26rem 0.5rem',
+            paddingLeft: `${depth * 14 + 10}px`,
+            fontSize: '0.74rem',
+            color: '#cccccc',
+            cursor: 'pointer',
+            userSelect: 'none',
+            transition: 'background 0.1s ease',
+          }}
+          className="ide-tree-row"
+        >
+          <span style={{ fontSize: '9px', color: '#858585', width: '10px', display: 'inline-block' }}>
+            {isExpanded ? '▼' : '▶'}
+          </span>
+          <MaterialFileIcon fileName={node.name} isFolder isOpen={isExpanded} size={15} />
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.name}</span>
+        </div>
+
+        {isExpanded && node.children && (
+          <div>
+            {node.children.map(child => (
+              <FileTreeItem
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                expandedFolders={expandedFolders}
+                onToggleFolder={onToggleFolder}
+                activeFileName={activeFileName}
+                files={files}
+                loadingFilePath={loadingFilePath}
+                onSelectFile={onSelectFile}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => onSelectFile(node.path, node.name)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.45rem',
+        padding: '0.26rem 0.5rem',
+        paddingLeft: `${depth * 14 + 10}px`,
+        fontSize: '0.74rem',
+        cursor: 'pointer',
+        background: isActive ? '#04395e' : 'transparent',
+        color: isActive ? '#ffffff' : '#cccccc',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        userSelect: 'none',
+        transition: 'background 0.1s ease'
+      }}
+      className="ide-tree-row"
+    >
+      <span style={{ width: '10px' }}></span>
+      <MaterialFileIcon fileName={node.name} size={15} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.name}</span>
+      {isLoading && (
+        <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#38bdf8' }}>loading...</span>
+      )}
+      {isModified && (
+        <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+      )}
+    </div>
+  );
+};
+
 export function computeUnifiedDiff(filePath: string, original: string = '', modified: string = ''): string {
   if (original === modified) {
     return `# --- a/${filePath}\n# +++ b/${filePath}\n# (No code modifications in this file)\n`;
@@ -60,9 +235,10 @@ export function computeUnifiedDiff(filePath: string, original: string = '', modi
 }
 
 const getDefaultFiles = (issue: ProblemIssue): Record<string, FileItem> => {
-  const repoBase = issue.repo.split('/')[1] || issue.repo;
+  const cleanRepo = (issue.repo || '').replace(/[./\s]+$/, '').trim();
+  const repoBase = cleanRepo.split('/')[1] || cleanRepo || 'workspace';
   const solutionContent = `/**
- * Solution for ${issue.repo} - Issue #${issue.issue_no}
+ * Solution for ${cleanRepo} - Issue #${issue.issue_no}
  * Sprint Track: ${issue.role} (${issue.level} Level)
  * Submitting Developer: ${issue.role}
  */
@@ -178,6 +354,9 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
   onPrSubmitted
 }) => {
   const { showToast } = useToast();
+  const cleanRepo = (issue.repo || '').replace(/[./\s]+$/, '').trim();
+  const repoBase = cleanRepo.split('/')[1] || cleanRepo || 'workspace';
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activePane, setActivePane] = useState<'explorer' | 'problem' | 'git' | 'zip'>('explorer');
   const [files, setFiles] = useState<Record<string, FileItem>>(getDefaultFiles(issue));
@@ -191,91 +370,141 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedZipName, setUploadedZipName] = useState<string | null>(null);
+
+  // Real Repository Tree State
+  const [repoTree, setRepoTree] = useState<FileTreeNode[]>([]);
+  const [repoBranch, setRepoBranch] = useState<string>('main');
+  const [loadingFilePath, setLoadingFilePath] = useState<string | null>(null);
   
   // Resizable Explorer Sidebar State
-  const [sidebarWidth, setSidebarWidth] = useState(210);
+  const [sidebarWidth, setSidebarWidth] = useState(230);
   const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
 
   const [outputLogs, setOutputLogs] = useState<string[]>([
     '[build] TypeScript compilation target: ES2022',
     '[build] Checking project dependencies... 0 errors',
-    '[ready] Monaco Studio environment initialized for ' + issue.repo
+    '[ready] Monaco Studio environment initialized for ' + cleanRepo
   ]);
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
     root: true,
-    src: true,
-    components: true,
-    tests: true
+    solution_workspace: true,
+    src: true
   });
 
   // Fetch real GitHub files from remote repository
   const loadRemoteRepoFiles = useCallback(async () => {
-    if (!issue.repo) return;
+    if (!cleanRepo) return;
     setIsLoadingGithubFiles(true);
     setOutputLogs(prev => [
       ...prev,
-      `[github] Fetching real repository tree for ${issue.repo}...`
+      `[github] Fetching real repository tree for ${cleanRepo}...`
     ]);
 
     try {
       let branch = 'main';
-      let treeRes = await fetch(`https://data.jsdelivr.com/v1/package/gh/${issue.repo}@main`);
-      if (!treeRes.ok) {
-        treeRes = await fetch(`https://data.jsdelivr.com/v1/package/gh/${issue.repo}@master`);
-        if (treeRes.ok) branch = 'master';
-      }
+      let candidatePaths: string[] = [];
 
-      const fetchedFiles: Record<string, FileItem> = {};
-
-      if (treeRes.ok) {
-        const treeData = await treeRes.json();
-        const candidateFiles: { name: string; path: string }[] = [];
-
-        if (Array.isArray(treeData.files)) {
-          for (const item of treeData.files) {
-            if (item.type === 'file' || (!item.files && item.name.includes('.'))) {
-              const ext = item.name.split('.').pop()?.toLowerCase();
-              if (['json', 'md', 'ts', 'tsx', 'js', 'jsx', 'css', 'html', 'yml', 'yaml', 'toml', 'py'].includes(ext || '')) {
-                // skip overly massive files
-                if (!item.name.includes('-lock.') && item.name !== 'yarn.lock') {
-                  candidateFiles.push({ name: item.name, path: item.name });
-                }
-              }
-            }
+      // 1. Try UnGH (ungh.cc) - High rate limit, fast public CDN for GitHub repos
+      try {
+        const repoMetaRes = await fetch(`https://ungh.cc/repos/${cleanRepo}`);
+        if (repoMetaRes.ok) {
+          const metaData = await repoMetaRes.json();
+          if (metaData?.repo?.defaultBranch) {
+            branch = metaData.repo.defaultBranch;
+            setRepoBranch(branch);
           }
         }
+        const unghFilesRes = await fetch(`https://ungh.cc/repos/${cleanRepo}/files/${branch}`);
+        if (unghFilesRes.ok) {
+          const unghData = await unghFilesRes.json();
+          if (Array.isArray(unghData?.files)) {
+            candidatePaths = unghData.files.map((f: any) => f.path).filter(Boolean);
+          }
+        }
+      } catch (_) {}
 
-        const priorityNames = ['package.json', 'README.md', 'tsconfig.json', 'index.ts', 'index.js', 'src/App.tsx', 'vite.config.ts'];
-        candidateFiles.sort((a, b) => {
-          const aPri = priorityNames.indexOf(a.name) >= 0 ? 0 : 1;
-          const bPri = priorityNames.indexOf(b.name) >= 0 ? 0 : 1;
-          return aPri - bPri;
+      // 2. Fallback to GitHub Trees API if ungh yielded no paths
+      if (candidatePaths.length === 0) {
+        try {
+          let treeRes = await fetch(`https://api.github.com/repos/${cleanRepo}/git/trees/${branch}?recursive=1`);
+          if (!treeRes.ok) {
+            branch = branch === 'main' ? 'master' : 'main';
+            setRepoBranch(branch);
+            treeRes = await fetch(`https://api.github.com/repos/${cleanRepo}/git/trees/${branch}?recursive=1`);
+          }
+          if (treeRes.ok) {
+            const treeData = await treeRes.json();
+            if (Array.isArray(treeData?.tree)) {
+              candidatePaths = treeData.tree.filter((t: any) => t.type === 'blob').map((t: any) => t.path);
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 3. Fallback to jsdelivr package API
+      if (candidatePaths.length === 0) {
+        try {
+          let jRes = await fetch(`https://data.jsdelivr.com/v1/package/gh/${cleanRepo}@${branch}`);
+          if (!jRes.ok) {
+            branch = branch === 'main' ? 'master' : 'main';
+            setRepoBranch(branch);
+            jRes = await fetch(`https://data.jsdelivr.com/v1/package/gh/${cleanRepo}@${branch}`);
+          }
+          if (jRes.ok) {
+            const jData = await jRes.json();
+            if (Array.isArray(jData?.files)) {
+              candidatePaths = jData.files.map((f: any) => f.name.replace(/^\//, '')).filter(Boolean);
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (candidatePaths.length > 0) {
+        // Filter out git internals and heavy binaries from code viewer
+        const filteredPaths = candidatePaths.filter(p => {
+          if (p.startsWith('.git/') || p.includes('node_modules/')) return false;
+          const ext = p.split('.').pop()?.toLowerCase();
+          if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'webm', 'zip', 'tar', 'gz', 'pdf', 'woff', 'woff2', 'ttf', 'eot', 'ico'].includes(ext || '')) {
+            return false;
+          }
+          return true;
         });
 
-        const toFetch = candidateFiles.slice(0, 6);
+        const tree = buildFileTree(filteredPaths);
+        setRepoTree(tree);
+
+        // Auto-expand top level folders and 'src'
+        const initialExpanded: Record<string, boolean> = { root: true, solution_workspace: true };
+        tree.forEach(node => {
+          if (node.isFolder) {
+            initialExpanded[node.path] = true;
+            if (node.name === 'src' && node.children) {
+              node.children.forEach(c => { if (c.isFolder) initialExpanded[c.path] = true; });
+            }
+          }
+        });
+        setExpandedFolders(prev => ({ ...prev, ...initialExpanded }));
+
+        // Pre-fetch the 4-6 most relevant priority files
+        const priorityCandidates = ['package.json', 'README.md', 'index.html', 'src/App.tsx', 'src/App.jsx', 'src/App.js', 'src/index.ts', 'src/index.js'];
+        const toFetch = filteredPaths
+          .filter(p => priorityCandidates.some(pri => p.toLowerCase().endsWith(pri.toLowerCase())))
+          .slice(0, 5);
+
+        const fetchedFiles: Record<string, FileItem> = {};
         await Promise.all(
-          toFetch.map(async (file) => {
+          toFetch.map(async (fPath) => {
             try {
-              const rawRes = await fetch(`https://raw.githubusercontent.com/${issue.repo}/${branch}/${file.path}`);
+              const rawRes = await fetch(`https://raw.githubusercontent.com/${cleanRepo}/${branch}/${fPath}`);
               if (rawRes.ok) {
                 const text = await rawRes.text();
-                if (text && text.length < 250000) {
-                  const ext = file.name.split('.').pop()?.toLowerCase() || '';
-                  let lang = 'plaintext';
-                  if (['ts', 'tsx'].includes(ext)) lang = 'typescript';
-                  else if (['js', 'jsx'].includes(ext)) lang = 'javascript';
-                  else if (ext === 'json') lang = 'json';
-                  else if (ext === 'md') lang = 'markdown';
-                  else if (ext === 'css') lang = 'css';
-                  else if (ext === 'html') lang = 'html';
-                  else if (ext === 'py') lang = 'python';
-
-                  fetchedFiles[file.name] = {
-                    name: file.name,
-                    path: file.path,
-                    folder: 'root',
-                    language: lang,
+                if (text && text.length < 300000) {
+                  fetchedFiles[fPath] = {
+                    name: fPath.split('/').pop() || fPath,
+                    path: fPath,
+                    folder: fPath.includes('/') ? fPath.split('/')[0] : 'root',
+                    language: detectLanguage(fPath),
                     content: text,
                     originalContent: text
                   };
@@ -284,45 +513,45 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
             } catch (_) {}
           })
         );
-      }
 
-      if (Object.keys(fetchedFiles).length > 0) {
-        setFiles(prev => {
-          const merged = { ...prev, ...fetchedFiles };
-          if (!merged['SolutionPatch.tsx']) {
-            merged['SolutionPatch.tsx'] = prev['SolutionPatch.tsx'];
-          }
-          return merged;
-        });
-        setOpenTabs(prev => {
-          const newNames = Object.keys(fetchedFiles).slice(0, 4);
-          return Array.from(new Set([...prev, ...newNames]));
-        });
+        if (Object.keys(fetchedFiles).length > 0) {
+          setFiles(prev => ({ ...prev, ...fetchedFiles }));
+          setOpenTabs(prev => Array.from(new Set([...prev, ...Object.keys(fetchedFiles).slice(0, 3)])));
+        }
+
         setOutputLogs(prev => [
           ...prev,
-          `[github] Mounted ${Object.keys(fetchedFiles).length} live files from https://github.com/${issue.repo} (${branch})`,
-          `[github] Ready for live solution authoring & unified git diff dispatch.`
+          `[github] Mounted real repository tree (${filteredPaths.length} files) from https://github.com/${cleanRepo} (${branch})`,
+          `[github] Live file browser ready. Click any file to view and edit in Monaco.`
         ]);
         showToast({
           title: 'GitHub Repos Synced',
-          message: `Loaded ${Object.keys(fetchedFiles).length} live files from ${issue.repo}`,
+          message: `Loaded ${filteredPaths.length} files from ${cleanRepo} (${branch})`,
           type: 'success'
         });
       } else {
+        // Fallback structured workspace tree
+        const fallbackPaths = [
+          'src/components/SolutionPatch.tsx',
+          'src/tests/specs.test.ts',
+          'README.md',
+          'package.json'
+        ];
+        setRepoTree(buildFileTree(fallbackPaths));
         setOutputLogs(prev => [
           ...prev,
-          `[github] Loaded local task environment for ${issue.repo}.`
+          `[github] Loaded local task environment for ${cleanRepo}.`
         ]);
       }
     } catch (err: any) {
       setOutputLogs(prev => [
         ...prev,
-        `[github] Sandbox loaded for ${issue.repo} (${err?.message || 'offline'})`
+        `[github] Sandbox loaded for ${cleanRepo} (${err?.message || 'offline'})`
       ]);
     } finally {
       setIsLoadingGithubFiles(false);
     }
-  }, [issue.repo, showToast]);
+  }, [cleanRepo, showToast]);
 
   useEffect(() => {
     loadRemoteRepoFiles();
@@ -333,7 +562,6 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
     if (!isDraggingSidebar) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      // 48px is the activity bar width on the left
       const newWidth = Math.max(160, Math.min(480, e.clientX - 48));
       setSidebarWidth(newWidth);
     };
@@ -355,13 +583,84 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
     setExpandedFolders(prev => ({ ...prev, [folderKey]: !prev[folderKey] }));
   };
 
-  const activeFile = files[activeFileName] || files['SolutionPatch.tsx'];
-  const repoBase = issue.repo.split('/')[1] || issue.repo;
+  const activeFile = files[activeFileName] || files['SolutionPatch.tsx'] || {
+    name: activeFileName.split('/').pop() || activeFileName,
+    path: activeFileName,
+    folder: 'root',
+    language: detectLanguage(activeFileName),
+    content: ''
+  };
 
   const handleSelectFile = (fileName: string) => {
     setActiveFileName(fileName);
     if (!openTabs.includes(fileName)) {
       setOpenTabs(prev => [...prev, fileName]);
+    }
+  };
+
+  // On-Demand Remote File Fetcher when clicked in Tree
+  const handleSelectFileNode = async (filePath: string, fileName: string) => {
+    if (files[filePath]?.content !== undefined) {
+      setActiveFileName(filePath);
+      if (!openTabs.includes(filePath)) {
+        setOpenTabs(prev => [...prev, filePath]);
+      }
+      return;
+    }
+
+    setLoadingFilePath(filePath);
+    try {
+      const branch = repoBranch || 'master';
+      const res = await fetch(`https://raw.githubusercontent.com/${cleanRepo}/${branch}/${filePath}`);
+      if (res.ok) {
+        const text = await res.text();
+        const lang = detectLanguage(filePath);
+        setFiles(prev => ({
+          ...prev,
+          [filePath]: {
+            name: fileName,
+            path: filePath,
+            folder: filePath.includes('/') ? filePath.split('/')[0] : 'root',
+            language: lang,
+            content: text,
+            originalContent: text
+          }
+        }));
+        setActiveFileName(filePath);
+        if (!openTabs.includes(filePath)) {
+          setOpenTabs(prev => [...prev, filePath]);
+        }
+        setOutputLogs(prev => [
+          ...prev,
+          `[github] Loaded ${filePath} (${Math.round(text.length / 1024 * 10) / 10} KB) from remote repo`
+        ]);
+      } else {
+        const lang = detectLanguage(filePath);
+        const placeholder = `// File: ${filePath}\n// Repository: https://github.com/${cleanRepo}/blob/${branch}/${filePath}\n// Ready for solution authoring in Monaco Studio.\n`;
+        setFiles(prev => ({
+          ...prev,
+          [filePath]: {
+            name: fileName,
+            path: filePath,
+            folder: filePath.includes('/') ? filePath.split('/')[0] : 'root',
+            language: lang,
+            content: placeholder,
+            originalContent: placeholder
+          }
+        }));
+        setActiveFileName(filePath);
+        if (!openTabs.includes(filePath)) {
+          setOpenTabs(prev => [...prev, filePath]);
+        }
+      }
+    } catch (_) {
+      showToast({
+        title: 'Network Warning',
+        message: `Unable to download ${fileName} from remote.`,
+        type: 'warning'
+      });
+    } finally {
+      setLoadingFilePath(null);
     }
   };
 
@@ -657,8 +956,82 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                   </div>
 
                   {/* Project Tree */}
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '0.4rem 0' }}>
-                    {/* Root Folder Header */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '0.3rem 0' }}>
+                    {/* 1. Dedicated Sprint Solution Deliverable Section */}
+                    <div style={{ marginBottom: '0.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.4rem' }}>
+                      <div
+                        onClick={() => toggleFolder('solution_workspace')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.3rem 0.6rem',
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          color: '#38bdf8',
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <span style={{ fontSize: '9px', color: '#38bdf8', width: '10px' }}>
+                          {expandedFolders['solution_workspace'] !== false ? '▼' : '▶'}
+                        </span>
+                        <span>⚡ SPRINT SOLUTION PATCH</span>
+                      </div>
+
+                      {expandedFolders['solution_workspace'] !== false && (
+                        <div>
+                          {/* SolutionPatch.tsx */}
+                          <div
+                            onClick={() => handleSelectFile('SolutionPatch.tsx')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.45rem',
+                              padding: '0.28rem 0.5rem 0.28rem 1.4rem',
+                              fontSize: '0.74rem',
+                              cursor: 'pointer',
+                              background: activeFileName === 'SolutionPatch.tsx' ? '#04395e' : 'transparent',
+                              color: activeFileName === 'SolutionPatch.tsx' ? '#ffffff' : '#cccccc',
+                              userSelect: 'none'
+                            }}
+                            className="ide-tree-row"
+                          >
+                            <MaterialFileIcon fileName="SolutionPatch.tsx" size={15} />
+                            <span style={{ fontWeight: 600 }}>SolutionPatch.tsx</span>
+                            {files['SolutionPatch.tsx']?.content !== files['SolutionPatch.tsx']?.originalContent && (
+                              <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+                            )}
+                          </div>
+
+                          {/* specs.test.ts */}
+                          <div
+                            onClick={() => handleSelectFile('specs.test.ts')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.45rem',
+                              padding: '0.28rem 0.5rem 0.28rem 1.4rem',
+                              fontSize: '0.74rem',
+                              cursor: 'pointer',
+                              background: activeFileName === 'specs.test.ts' ? '#04395e' : 'transparent',
+                              color: activeFileName === 'specs.test.ts' ? '#ffffff' : '#cccccc',
+                              userSelect: 'none'
+                            }}
+                            className="ide-tree-row"
+                          >
+                            <MaterialFileIcon fileName="specs.test.ts" size={15} />
+                            <span>specs.test.ts</span>
+                            {files['specs.test.ts']?.content !== files['specs.test.ts']?.originalContent && (
+                              <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. Real Remote GitHub Repository Hierarchy Tree */}
                     <div
                       onClick={() => toggleFolder('root')}
                       style={{
@@ -666,162 +1039,80 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                         alignItems: 'center',
                         gap: '0.4rem',
                         padding: '0.35rem 0.6rem',
-                        fontSize: '0.74rem',
+                        fontSize: '0.72rem',
                         fontWeight: 700,
-                        color: '#cccccc',
+                        letterSpacing: '0.04em',
+                        color: '#e2e8f0',
                         cursor: 'pointer',
                         userSelect: 'none'
                       }}
                     >
-                      <span style={{ fontSize: '9px', color: '#858585' }}>{expandedFolders['root'] ? '▼' : '▶'}</span>
-                      <span style={{ textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repoBase}</span>
+                      <span style={{ fontSize: '9px', color: '#858585', width: '10px' }}>
+                        {expandedFolders['root'] ? '▼' : '▶'}
+                      </span>
+                      <span style={{ textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {repoBase}
+                      </span>
+                      <span style={{ fontSize: '0.62rem', color: '#94a3b8', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '3px', marginLeft: 'auto', fontFamily: 'monospace' }}>
+                        {repoBranch}
+                      </span>
                     </div>
 
                     {expandedFolders['root'] && (
-                      <div style={{ paddingLeft: '0.5rem' }}>
-                        {/* src folder */}
-                        <div
-                          onClick={() => toggleFolder('src')}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            padding: '0.28rem 0.5rem',
-                            fontSize: '0.74rem',
-                            color: '#cccccc',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <span style={{ fontSize: '9px', color: '#858585' }}>{expandedFolders['src'] ? '▼' : '▶'}</span>
-                          <MaterialFileIcon fileName="src" isFolder isOpen={expandedFolders['src']} size={15} />
-                          <span>src</span>
-                        </div>
-
-                        {expandedFolders['src'] && (
-                          <div style={{ paddingLeft: '0.8rem' }}>
-                            {/* components folder */}
-                            <div
-                              onClick={() => toggleFolder('components')}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.4rem',
-                                padding: '0.28rem 0.5rem',
-                                fontSize: '0.74rem',
-                                color: '#cccccc',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <span style={{ fontSize: '9px', color: '#858585' }}>{expandedFolders['components'] ? '▼' : '▶'}</span>
-                              <MaterialFileIcon fileName="components" isFolder isOpen={expandedFolders['components']} size={15} />
-                              <span>components</span>
-                            </div>
-
-                            {expandedFolders['components'] && (
-                              <div style={{ paddingLeft: '0.8rem' }}>
-                                <div
-                                  onClick={() => handleSelectFile('SolutionPatch.tsx')}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.45rem',
-                                    padding: '0.3rem 0.5rem',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    background: activeFileName === 'SolutionPatch.tsx' ? '#04395e' : 'transparent',
-                                    color: activeFileName === 'SolutionPatch.tsx' ? '#ffffff' : '#cccccc',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
-                                  }}
-                                >
-                                  <MaterialFileIcon fileName="SolutionPatch.tsx" size={15} />
-                                  <span>SolutionPatch.tsx</span>
-                                  {files['SolutionPatch.tsx']?.content !== files['SolutionPatch.tsx']?.originalContent && (
-                                    <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* tests folder */}
-                            <div
-                              onClick={() => toggleFolder('tests')}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.4rem',
-                                padding: '0.28rem 0.5rem',
-                                fontSize: '0.74rem',
-                                color: '#cccccc',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <span style={{ fontSize: '9px', color: '#858585' }}>{expandedFolders['tests'] ? '▼' : '▶'}</span>
-                              <MaterialFileIcon fileName="tests" isFolder isOpen={expandedFolders['tests']} size={15} />
-                              <span>tests</span>
-                            </div>
-
-                            {expandedFolders['tests'] && (
-                              <div style={{ paddingLeft: '0.8rem' }}>
-                                <div
-                                  onClick={() => handleSelectFile('specs.test.ts')}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.45rem',
-                                    padding: '0.3rem 0.5rem',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    background: activeFileName === 'specs.test.ts' ? '#04395e' : 'transparent',
-                                    color: activeFileName === 'specs.test.ts' ? '#ffffff' : '#cccccc',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
-                                  }}
-                                >
-                                  <MaterialFileIcon fileName="specs.test.ts" size={15} />
-                                  <span>specs.test.ts</span>
-                                  {files['specs.test.ts']?.content !== files['specs.test.ts']?.originalContent && (
-                                    <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                      <div style={{ paddingLeft: '0.2rem' }}>
+                        {isLoadingGithubFiles && repoTree.length === 0 ? (
+                          <div style={{ padding: '0.8rem 1rem', fontSize: '0.72rem', color: '#858585', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span className="pulse-dot"></span>
+                            <span>Loading repository files from GitHub...</span>
                           </div>
+                        ) : repoTree.length > 0 ? (
+                          repoTree.map(node => (
+                            <FileTreeItem
+                              key={node.path}
+                              node={node}
+                              depth={0}
+                              expandedFolders={expandedFolders}
+                              onToggleFolder={toggleFolder}
+                              activeFileName={activeFileName}
+                              files={files}
+                              loadingFilePath={loadingFilePath}
+                              onSelectFile={handleSelectFileNode}
+                            />
+                          ))
+                        ) : (
+                          Object.entries(files)
+                            .filter(([fName]) => fName !== 'SolutionPatch.tsx' && fName !== 'specs.test.ts')
+                            .map(([fName, fileItem]) => {
+                              const isMod = fileItem.content !== fileItem.originalContent;
+                              const isActive = activeFileName === fName;
+                              return (
+                                <div
+                                  key={fName}
+                                  onClick={() => handleSelectFile(fName)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.45rem',
+                                    padding: '0.3rem 0.5rem 0.3rem 1.4rem',
+                                    fontSize: '0.74rem',
+                                    cursor: 'pointer',
+                                    background: isActive ? '#04395e' : 'transparent',
+                                    color: isActive ? '#ffffff' : '#cccccc',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                  }}
+                                  className="ide-tree-row"
+                                >
+                                  <MaterialFileIcon fileName={fName} size={15} />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{fName}</span>
+                                  {isMod && (
+                                    <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+                                  )}
+                                </div>
+                              );
+                            })
                         )}
-
-                        {/* Dynamic Root & Real Remote GitHub Repository Files */}
-                        {Object.entries(files)
-                          .filter(([fName]) => fName !== 'SolutionPatch.tsx' && fName !== 'specs.test.ts')
-                          .map(([fName, fileItem]) => {
-                            const isMod = fileItem.content !== fileItem.originalContent;
-                            return (
-                              <div
-                                key={fName}
-                                onClick={() => handleSelectFile(fName)}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.45rem',
-                                  padding: '0.3rem 0.5rem 0.3rem 1.4rem',
-                                  fontSize: '0.75rem',
-                                  cursor: 'pointer',
-                                  background: activeFileName === fName ? '#04395e' : 'transparent',
-                                  color: activeFileName === fName ? '#ffffff' : '#cccccc',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
-                                }}
-                              >
-                                <MaterialFileIcon fileName={fName} size={15} />
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{fName}</span>
-                                {isMod && (
-                                  <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
-                                )}
-                              </div>
-                            );
-                          })}
                       </div>
                     )}
                   </div>
@@ -914,10 +1205,12 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
                   {openTabs.map(tabName => {
                     const isActive = activeFileName === tabName;
+                    const displayName = tabName.split('/').pop() || tabName;
                     return (
                       <div
                         key={tabName}
                         onClick={() => setActiveFileName(tabName)}
+                        title={tabName}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -933,8 +1226,8 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                           userSelect: 'none'
                         }}
                       >
-                        <MaterialFileIcon fileName={tabName} size={15} />
-                        <span>{tabName}</span>
+                        <MaterialFileIcon fileName={displayName} size={15} />
+                        <span>{displayName}</span>
                         <span
                           onClick={(e) => handleCloseTab(e, tabName)}
                           style={{
@@ -1097,15 +1390,16 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                 fontSize: '0.72rem',
                 color: '#858585',
                 gap: '0.4rem',
-                userSelect: 'none'
+                userSelect: 'none',
+                overflowX: 'auto'
               }}>
                 <span>{repoBase}</span>
-                <span>›</span>
-                <span>src</span>
-                <span>›</span>
-                <span>{activeFile.folder}</span>
-                <span>›</span>
-                <span style={{ color: '#cccccc' }}>{activeFileName}</span>
+                {(activeFile.path || activeFileName).split('/').map((part, i, arr) => (
+                  <React.Fragment key={i}>
+                    <span>›</span>
+                    <span style={{ color: i === arr.length - 1 ? '#cccccc' : '#858585' }}>{part}</span>
+                  </React.Fragment>
+                ))}
                 {isDiffView && (
                   <span style={{ marginLeft: 'auto', color: '#38bdf8', fontSize: '0.68rem', fontWeight: 600 }}>
                     Comparing with GitHub Remote Original

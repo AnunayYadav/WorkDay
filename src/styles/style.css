@@ -6904,6 +6904,10 @@ code, pre, .code-font, .code-editor, .terminal-text {
   height: 100%;
 }
 
+.ide-tree-row:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .fallback-code-editor {
   width: 100%;
   height: 100%;

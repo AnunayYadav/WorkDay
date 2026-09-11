@@ -143,6 +143,8 @@ export function taskItemToProblemIssue(task: TaskItem): ProblemIssue {
       repo = titleParenMatch[1].includes('/') ? titleParenMatch[1] : `Dezenix/${titleParenMatch[1]}`;
     }
   }
+  // Sanitize repo string (remove trailing dots, slashes, punctuation, whitespace)
+  repo = repo.replace(/[./\s]+$/, '').trim();
 
   let level = 'Medium';
   const levelMatch = task.title.match(/·\s*(Easy|Medium|Hard)/i);
