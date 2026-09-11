@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { EmployeeState, PullRequest, TaskItem } from '../../../types';
 import { CloudStorage } from '../../../lib/supabase';
+import { useToast } from '../../../lib/toast';
+import { PROBLEMS_DATASET } from '../../../lib/dataset';
 
 interface AreaManagerDashboardProps {
   employee: EmployeeState;
@@ -17,10 +19,17 @@ interface DispatchMessage {
   createdAt?: string;
 }
 
+const FALLBACK_TEAMMATES = [
+  { empId: 'WD-DEVON-01', fullName: 'Devon Reed', role: 'Staff Frontend Engineer' },
+  { empId: 'WD-SARAH-02', fullName: 'Sarah Chen', role: 'UI/UX Technologist' },
+  { empId: 'WD-LIAM-03', fullName: 'Liam K.', role: 'QA & Reliability Lead' }
+];
+
 export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
   employee,
   onNavigateTab
 }) => {
+  const { showToast } = useToast();
   const [squadMembers, setSquadMembers] = useState<EmployeeState[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
@@ -34,13 +43,36 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
 
   // New task form state
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [selectedProblemId, setSelectedProblemId] = useState<string>('custom');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
-  const [taskAssigneeEmpId, setTaskAssigneeEmpId] = useState('');
+  const [taskAssigneeEmpId, setTaskAssigneeEmpId] = useState('unassigned');
+  const [taskCustomAssigneeName, setTaskCustomAssigneeName] = useState('');
   const [taskPriority, setTaskPriority] = useState<TaskItem['priority']>('medium');
   const [taskDueDate, setTaskDueDate] = useState('');
   const [taskRepo, setTaskRepo] = useState('enterprise-core');
   const [savingTask, setSavingTask] = useState(false);
+
+  // Extract all available technical problems from PROBLEMS_DATASET
+  const availableProblems = useMemo(() => {
+    const list: { id: string; issueNo: string; repo: string; title: string; level: 'Easy' | 'Medium' | 'Hard'; role: string; url: string; description: string }[] = [];
+    const roles = PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering || [];
+    roles.forEach(r => {
+      (r.problems || []).forEach(p => {
+        list.push({
+          id: `${p.repo}#${p.issue_no}`,
+          issueNo: p.issue_no,
+          repo: p.repo,
+          title: `[#${p.issue_no}] ${r.title} · ${p.level} (${p.repo.split('/')[1] || p.repo})`,
+          level: p.level as any,
+          role: r.title,
+          url: p.url,
+          description: `Resolve technical deliverable #${p.issue_no} in ${p.repo}. Ensure tests pass and submit PR for managerial sign-off.`
+        });
+      });
+    });
+    return list;
+  }, []);
 
   // New meeting form state
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -76,9 +108,11 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       setMeetings(allMeetings || []);
       setRecentDispatches((generalMsgs || []).slice(-5));
 
-      // Default assignee to first squad member if available
-      if (profiles.length > 0 && !taskAssigneeEmpId) {
+      // Default assignee to first squad member or unassigned
+      if (profiles.length > 0) {
         setTaskAssigneeEmpId(profiles[0].empId);
+      } else {
+        setTaskAssigneeEmpId('unassigned');
       }
     } catch (err) {
       console.error('[Manager Dashboard] Error fetching data:', err);
@@ -122,25 +156,104 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
     };
   }, [employee.empId, employee.companyName]);
 
+  // Handle selecting an available problem from backlog
+  const handleSelectProblem = (probId: string) => {
+    setSelectedProblemId(probId);
+    if (probId === 'custom') {
+      setTaskTitle('');
+      setTaskRepo('enterprise-core');
+      setTaskPriority('medium');
+      setTaskDesc('');
+      return;
+    }
+    const found = availableProblems.find(p => p.id === probId);
+    if (found) {
+      setTaskTitle(found.title);
+      setTaskRepo(found.repo);
+      setTaskPriority(found.level === 'Hard' ? 'critical' : found.level === 'Medium' ? 'high' : 'medium');
+      setTaskDesc(found.description);
+    }
+  };
+
+  // Proper deadline helper
+  const setDeadlinePreset = (preset: string) => {
+    const now = new Date();
+    let target = new Date();
+    if (preset === 'today_5pm') {
+      target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0);
+    } else if (preset === 'tomorrow') {
+      target = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      target.setHours(12, 0, 0, 0);
+    } else if (preset === 'friday') {
+      const dayOfWeek = now.getDay();
+      const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
+      target = new Date(now.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
+      target.setHours(17, 0, 0, 0);
+    } else if (preset === 'next_sprint') {
+      target = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      target.setHours(17, 0, 0, 0);
+    }
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, '0');
+    const day = String(target.getDate()).padStart(2, '0');
+    const hours = String(target.getHours()).padStart(2, '0');
+    const minutes = String(target.getMinutes()).padStart(2, '0');
+    setTaskDueDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+  };
+
+  const formatDisplayDeadline = (isoOrStr: string) => {
+    if (!isoOrStr) return 'End of Current Sprint';
+    try {
+      const d = new Date(isoOrStr);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    } catch (_) {}
+    return isoOrStr;
+  };
+
   // Handle task creation
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle.trim() || !taskAssigneeEmpId) return;
+    if (!taskTitle.trim()) {
+      showToast({ title: 'Task Title Required', message: 'Please specify or select a deliverable title.', type: 'error' });
+      return;
+    }
 
     setSavingTask(true);
-    const assignee = squadMembers.find(m => m.empId === taskAssigneeEmpId);
-    const assigneeName = assignee?.fullName || 'Teammate';
+    let targetEmpId = taskAssigneeEmpId;
+    let targetAssigneeName = 'Squad Engineer';
+
+    if (targetEmpId === 'custom_assignee') {
+      targetAssigneeName = taskCustomAssigneeName.trim() || 'Assigned Engineer';
+      targetEmpId = `WD-CUSTOM-${Date.now().toString().slice(-4)}`;
+    } else if (targetEmpId === 'unassigned' || !targetEmpId) {
+      targetAssigneeName = 'Sprint Backlog (Unassigned)';
+      targetEmpId = 'unassigned';
+    } else {
+      const foundSquad = squadMembers.find(m => m.empId === targetEmpId);
+      const foundFallback = FALLBACK_TEAMMATES.find(t => t.empId === targetEmpId);
+      targetAssigneeName = foundSquad?.fullName || foundFallback?.fullName || 'Squad Engineer';
+    }
+
+    const dueFormatted = formatDisplayDeadline(taskDueDate);
 
     const created = await CloudStorage.createAssignedTask({
-      assignedToEmpId: taskAssigneeEmpId,
-      assignedToName: assigneeName,
+      assignedToEmpId: targetEmpId,
+      assignedToName: targetAssigneeName,
       assignedByEmpId: employee.empId,
       assignedByName: employee.fullName,
       title: taskTitle.trim(),
       description: taskDesc.trim() || 'Complete assigned acceptance criteria and link pull request.',
       priority: taskPriority,
       status: 'todo',
-      dueDate: taskDueDate || 'End of Current Sprint',
+      dueDate: dueFormatted,
       repo: taskRepo,
       issueNo: `#T-${Math.floor(100 + Math.random() * 900)}`
     });
@@ -150,7 +263,26 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       setTaskTitle('');
       setTaskDesc('');
       setTaskDueDate('');
+      setSelectedProblemId('custom');
       setShowNewTaskModal(false);
+
+      // Automated realtime notification to squad general channel
+      const notifyMsg: DispatchMessage = {
+        id: `msg-${Date.now()}`,
+        sender: employee.fullName,
+        text: `[Sprint Dispatch] Delegated deliverable: "${taskTitle.trim()}" to ${targetAssigneeName} (Target Deadline: ${dueFormatted}).`,
+        empId: employee.empId,
+        threadId: '#general',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: new Date().toISOString()
+      };
+      await CloudStorage.sendMessage(employee.empId, '#general', notifyMsg).catch(() => {});
+
+      showToast({
+        title: 'Deliverable Delegated',
+        message: `Assigned "${taskTitle.trim()}" to ${targetAssigneeName}.`,
+        type: 'success'
+      });
     }
     setSavingTask(false);
   };
@@ -164,26 +296,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
     if (!window.confirm('Are you sure you want to cancel and delete this delegated task?')) return;
     setTasks(prev => prev.filter(t => t.id !== taskId));
     await CloudStorage.deleteAssignedTask(taskId);
-  };
-
-  // Quick deadline helper
-  const setDeadlinePreset = (preset: string) => {
-    const now = new Date();
-    if (preset === 'today_5pm') {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0);
-      setTaskDueDate(`Today at 5:00 PM (${d.toLocaleDateString([], { month: 'short', day: 'numeric' })})`);
-    } else if (preset === 'tomorrow') {
-      const d = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      setTaskDueDate(`Tomorrow at 12:00 PM (${d.toLocaleDateString([], { month: 'short', day: 'numeric' })})`);
-    } else if (preset === 'friday') {
-      const dayOfWeek = now.getDay();
-      const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
-      const d = new Date(now.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
-      setTaskDueDate(`Sprint Friday 5:00 PM (${d.toLocaleDateString([], { month: 'short', day: 'numeric' })})`);
-    } else if (preset === 'next_sprint') {
-      const d = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-      setTaskDueDate(`Next Sprint (${d.toLocaleDateString([], { month: 'short', day: 'numeric' })})`);
-    }
+    showToast({ title: 'Task Removed', message: 'Delegated sprint task was removed.', type: 'info' });
   };
 
   // Handle meeting schedule
@@ -342,15 +455,14 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
               Schedule Squad Sync
             </button>
             <button
-              className="btn btn-accent"
+              className="btn btn-primary"
               onClick={() => setShowNewTaskModal(true)}
-              style={{ fontWeight: 600 }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              + Assign Task to Employee
+              Assign Task to Employee
             </button>
           </div>
         </div>
@@ -409,10 +521,14 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
               </h3>
             </div>
             <button
-              className="btn btn-accent btn-sm"
+              className="btn btn-primary btn-sm"
               onClick={() => setShowNewTaskModal(true)}
             >
-              + Assign Task to Employee
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Assign Task to Employee
             </button>
           </div>
 
@@ -474,13 +590,13 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                 width: '46px',
                 height: '46px',
                 borderRadius: '50%',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
                 margin: '0 auto 0.75rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#60a5fa'
+                color: '#ffffff'
               }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -492,16 +608,16 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
               </h4>
               <p style={{ color: '#8e8e93', fontSize: '0.82rem', maxWidth: '440px', margin: '0 auto 1.25rem', lineHeight: 1.5 }}>
                 {tasks.length === 0
-                  ? 'Assign technical deliverables to squad engineers, set target deadlines, define acceptance criteria, and track completion.'
+                  ? 'Assign technical deliverables to squad engineers, pick from available curriculum issues, set target deadlines, and track completion.'
                   : 'No sprint tasks match the active filter or search criteria.'}
               </p>
               {tasks.length === 0 && (
-                <button className="btn btn-accent" onClick={() => setShowNewTaskModal(true)}>
+                <button className="btn btn-primary" onClick={() => setShowNewTaskModal(true)}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
-                  + Assign First Task to Employee
+                  Assign First Task to Employee
                 </button>
               )}
             </div>
@@ -981,21 +1097,25 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       {/* Modal: Delegate New Sprint Task */}
       {showNewTaskModal && (
         <div className="modal-backdrop" onClick={() => setShowNewTaskModal(false)}>
-          <div className="modal-content executive-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '540px' }}>
+          <div className="modal-content executive-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="card-kicker-row">
               <span className="card-kicker">DIRECT SPRINT DELEGATION</span>
+              <span className="mono" style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
+                {employee.companyName || 'Corporate'} Workspace
+              </span>
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
-              Assign Sprint Ticket
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
+              Assign Sprint Deliverable
             </h2>
-            <p style={{ fontSize: '0.8rem', color: '#71717a', marginBottom: '1.25rem' }}>
-              Create a formal engineering deliverable synced to Supabase and assigned to a squad engineer.
+            <p style={{ fontSize: '0.8rem', color: '#8e939e', marginBottom: '1.25rem', lineHeight: 1.45 }}>
+              Delegate an engineering ticket to squad engineers, select from available curriculum problems, and configure delivery SLAs.
             </p>
 
             <form onSubmit={handleCreateTask}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
-                  Assignee (Squad Engineer in {employee.companyName || 'Tenant'})
+              {/* Step 1: Select Employee */}
+              <div style={{ marginBottom: '1.15rem' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: '#d4d4d8', marginBottom: '0.35rem', fontWeight: 500 }}>
+                  1. Select Assignee (Squad Member)
                 </label>
                 <select
                   value={taskAssigneeEmpId}
@@ -1003,29 +1123,104 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                   style={{
                     width: '100%',
                     background: '#12141a',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
                     color: '#ffffff',
-                    padding: '0.5rem 0.75rem',
+                    padding: '0.55rem 0.75rem',
                     borderRadius: '6px',
-                    fontSize: '0.85rem'
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-premium)',
+                    outline: 'none'
                   }}
-                  required
                 >
-                  {squadMembers.length === 0 ? (
-                    <option value="">No registered engineers at {employee.companyName || 'this company'} yet</option>
-                  ) : (
-                    squadMembers.map(m => (
-                      <option key={m.empId} value={m.empId}>
-                        {m.fullName} ({m.selectedRole?.title || 'Engineer'})
-                      </option>
-                    ))
+                  {squadMembers.length > 0 && (
+                    <optgroup label={`Active Direct Reports (${employee.companyName || 'Company'})`}>
+                      {squadMembers.map(m => (
+                        <option key={m.empId} value={m.empId}>
+                          {m.fullName} ({m.selectedRole?.title || 'Engineer'}) · {m.corporateEmail || m.email || m.empId}
+                        </option>
+                      ))}
+                    </optgroup>
                   )}
+                  <optgroup label="Squad Backlog & Core Engineers">
+                    <option value="unassigned">Sprint Backlog (Unassigned / Any Engineer)</option>
+                    {FALLBACK_TEAMMATES.map(t => (
+                      <option key={t.empId} value={t.empId}>
+                        {t.fullName} ({t.role})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <option value="custom_assignee">+ Assign by Custom Name or Email...</option>
+                </select>
+
+                {taskAssigneeEmpId === 'custom_assignee' && (
+                  <input
+                    type="text"
+                    value={taskCustomAssigneeName}
+                    onChange={e => setTaskCustomAssigneeName(e.target.value)}
+                    placeholder="e.g. Alex Morgan (alex@company.corp)"
+                    style={{
+                      width: '100%',
+                      marginTop: '0.5rem',
+                      background: '#12141a',
+                      border: '1px solid rgba(255, 255, 255, 0.14)',
+                      color: '#ffffff',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem',
+                      fontFamily: 'var(--font-premium)'
+                    }}
+                    required
+                  />
+                )}
+              </div>
+
+              {/* Step 2: Choose Available Task from Backlog */}
+              <div style={{ marginBottom: '1.15rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.78rem', color: '#d4d4d8', fontWeight: 500 }}>
+                    2. Choose Task from Available Engineering Backlog
+                  </label>
+                  <span style={{ fontSize: '0.72rem', color: '#71717a' }}>
+                    {availableProblems.length} Curriculum Issues
+                  </span>
+                </div>
+                <select
+                  value={selectedProblemId}
+                  onChange={e => handleSelectProblem(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: '#12141a',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
+                    color: '#ffffff',
+                    padding: '0.55rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-premium)',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="custom">-- Write Custom Sprint Ticket (Manual Input) --</option>
+                  <optgroup label="Frontend Engineering Issues">
+                    {availableProblems.filter(p => p.role.includes('Frontend')).map(p => (
+                      <option key={p.id} value={p.id}>
+                        [#{p.issueNo}] {p.role} · {p.level} ({p.repo.split('/')[1] || p.repo})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Backend & Fullstack Engineering Issues">
+                    {availableProblems.filter(p => !p.role.includes('Frontend')).slice(0, 25).map(p => (
+                      <option key={p.id} value={p.id}>
+                        [#{p.issueNo}] {p.role} · {p.level} ({p.repo.split('/')[1] || p.repo})
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
-                  Task Title
+              {/* Task Title */}
+              <div style={{ marginBottom: '1.15rem' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: '#d4d4d8', marginBottom: '0.35rem', fontWeight: 500 }}>
+                  Deliverable Title
                 </label>
                 <input
                   type="text"
@@ -1035,21 +1230,22 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                   style={{
                     width: '100%',
                     background: '#12141a',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
                     color: '#ffffff',
-                    padding: '0.5rem 0.75rem',
+                    padding: '0.55rem 0.75rem',
                     borderRadius: '6px',
-                    fontSize: '0.85rem'
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-premium)'
                   }}
                   required
                 />
               </div>
 
-              {/* Priority & Deadline Presets Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              {/* Priority & Repository */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.15rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
-                    Priority
+                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#d4d4d8', marginBottom: '0.35rem', fontWeight: 500 }}>
+                    Priority / SLA
                   </label>
                   <select
                     value={taskPriority}
@@ -1057,21 +1253,22 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                     style={{
                       width: '100%',
                       background: '#12141a',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      border: '1px solid rgba(255, 255, 255, 0.14)',
                       color: '#ffffff',
-                      padding: '0.5rem 0.75rem',
+                      padding: '0.55rem 0.75rem',
                       borderRadius: '6px',
-                      fontSize: '0.85rem'
+                      fontSize: '0.85rem',
+                      fontFamily: 'var(--font-premium)'
                     }}
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical (P0)</option>
+                    <option value="low">P3 - Low</option>
+                    <option value="medium">P2 - Medium</option>
+                    <option value="high">P1 - High (Sprint Priority)</option>
+                    <option value="critical">P0 - Blocker (Critical)</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#d4d4d8', marginBottom: '0.35rem', fontWeight: 500 }}>
                     Repository
                   </label>
                   <input
@@ -1082,118 +1279,98 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                     style={{
                       width: '100%',
                       background: '#12141a',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      border: '1px solid rgba(255, 255, 255, 0.14)',
                       color: '#ffffff',
-                      padding: '0.5rem 0.75rem',
+                      padding: '0.55rem 0.75rem',
                       borderRadius: '6px',
-                      fontSize: '0.85rem'
+                      fontSize: '0.85rem',
+                      fontFamily: 'var(--font-premium)'
                     }}
                   />
                 </div>
               </div>
 
-              {/* Deadline Input with Quick Presets */}
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
-                  Target Due Date &amp; Deadline
-                </label>
-                <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+              {/* Step 3: Proper Deadline */}
+              <div style={{ marginBottom: '1.15rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.78rem', color: '#d4d4d8', fontWeight: 500 }}>
+                    3. Target Deadline &amp; Due Date
+                  </label>
+                  {taskDueDate && (
+                    <span style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 500 }}>
+                      Target: {formatDisplayDeadline(taskDueDate)}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setDeadlinePreset('today_5pm')}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '4px',
-                      color: '#d4d4d8',
-                      padding: '0.2rem 0.5rem',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer'
-                    }}
                   >
                     Today 5:00 PM
                   </button>
                   <button
                     type="button"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setDeadlinePreset('tomorrow')}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '4px',
-                      color: '#d4d4d8',
-                      padding: '0.2rem 0.5rem',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer'
-                    }}
                   >
-                    Tomorrow
+                    Tomorrow 12:00 PM
                   </button>
                   <button
                     type="button"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setDeadlinePreset('friday')}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '4px',
-                      color: '#38bdf8',
-                      padding: '0.2rem 0.5rem',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer'
-                    }}
                   >
-                    Sprint Friday
+                    Sprint Friday 5:00 PM
                   </button>
                   <button
                     type="button"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setDeadlinePreset('next_sprint')}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '4px',
-                      color: '#d4d4d8',
-                      padding: '0.2rem 0.5rem',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer'
-                    }}
                   >
-                    Next Sprint (2 wks)
+                    Next Sprint (2 Wks)
                   </button>
                 </div>
                 <input
-                  type="text"
+                  type="datetime-local"
                   value={taskDueDate}
                   onChange={e => setTaskDueDate(e.target.value)}
-                  placeholder="e.g. Sprint Friday 5:00 PM (Sep 18)"
                   style={{
                     width: '100%',
                     background: '#12141a',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
                     color: '#ffffff',
-                    padding: '0.5rem 0.75rem',
+                    padding: '0.55rem 0.75rem',
                     borderRadius: '6px',
-                    fontSize: '0.85rem'
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-premium)',
+                    colorScheme: 'dark'
                   }}
                   required
                 />
               </div>
 
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
+              {/* Technical Description & Acceptance Criteria */}
+              <div style={{ marginBottom: '1.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: '#d4d4d8', marginBottom: '0.35rem', fontWeight: 500 }}>
                   Technical Description &amp; Acceptance Criteria
                 </label>
                 <textarea
                   value={taskDesc}
                   onChange={e => setTaskDesc(e.target.value)}
                   rows={3}
-                  placeholder="Outline the architectural expectations, unit tests required, and pull request target..."
+                  placeholder="Outline architectural expectations, required test coverage, and pull request sign-off criteria..."
                   style={{
                     width: '100%',
                     background: '#12141a',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
                     color: '#ffffff',
-                    padding: '0.5rem 0.75rem',
+                    padding: '0.55rem 0.75rem',
                     borderRadius: '6px',
-                    fontSize: '0.85rem'
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-premium)',
+                    lineHeight: 1.45
                   }}
                 />
               </div>
@@ -1208,9 +1385,8 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-accent"
+                  className="btn btn-primary"
                   disabled={savingTask || !taskTitle.trim()}
-                  style={{ fontWeight: 600 }}
                 >
                   {savingTask ? 'Assigning...' : 'Confirm & Assign Deliverable →'}
                 </button>
