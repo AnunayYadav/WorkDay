@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { ProblemIssue, EmployeeState, TaskItem } from '../../../types';
+import { taskItemToProblemIssue, type ProblemIssue, type EmployeeState, type TaskItem } from '../../../types';
 import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaTasksProps {
@@ -304,6 +304,32 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                           Assigned: {new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
                       </div>
+
+                      <div className="hero-task-actions-row" style={{ marginTop: '0.25rem' }}>
+                        <div className="hero-task-cta-group">
+                          <button
+                            type="button"
+                            className="btn-open-ide btn-action-ide"
+                            onClick={() => onOpenStudio(taskItemToProblemIssue(task))}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                            </svg>
+                            <span>Edit in Monaco Editor →</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-upload-zip-trigger"
+                            onClick={() => onOpenStudio(taskItemToProblemIssue(task))}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                            </svg>
+                            <span>Upload Solution .zip</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -480,6 +506,32 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                         <span className="mono">
                           Assigned: {new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
+                      </div>
+
+                      <div className="hero-task-actions-row" style={{ marginTop: '0.25rem' }}>
+                        <div className="hero-task-cta-group">
+                          <button
+                            type="button"
+                            className="btn-open-ide btn-action-ide"
+                            onClick={() => onOpenStudio(taskItemToProblemIssue(task))}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                            </svg>
+                            <span>Edit in Monaco Editor →</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-upload-zip-trigger"
+                            onClick={() => onOpenStudio(taskItemToProblemIssue(task))}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                            </svg>
+                            <span>Upload Solution .zip</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
