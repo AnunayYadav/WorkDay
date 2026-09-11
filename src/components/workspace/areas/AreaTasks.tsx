@@ -17,7 +17,6 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
   completedTasks,
   queuedTasks,
   onOpenStudio,
-  employee,
   managerTasks: assignedTasks = [],
   onUpdateManagerTasks: setAssignedTasks = () => {}
 }) => {
