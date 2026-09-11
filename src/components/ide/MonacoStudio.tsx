@@ -247,6 +247,7 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
     };
 
     await CloudStorage.savePullRequest(newPr);
+    await CloudStorage.recordTaskProgress(employee.empId, issue.repo, issue.issue_no, 'submitted', prId);
     setIsCelebrationOpen(true);
     setIsSubmitting(false);
     onPrSubmitted(newPr);

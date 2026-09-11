@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { EmployeeState, ProblemIssue, PullRequest } from '../../types';
+import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord } from '../../types';
 import { CloudStorage } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 
@@ -40,6 +40,8 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   const { showToast } = useToast();
   const [activeArea, setActiveArea] = useState<TabType>('home');
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
+  const [roleProblems, setRoleProblems] = useState<ProblemIssue[]>(employee.selectedRole?.problems || []);
+  const [employeeProgress, setEmployeeProgress] = useState<EmployeeProgressRecord[]>([]);
   const [liveTime, setLiveTime] = useState<string>('10:45 AM');
 
   // Load pull requests on startup and subscribe to cloud realtime changes
@@ -55,6 +57,37 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     };
   }, []);
 
+  // Fetch role-wise assigned problems from Supabase
+  useEffect(() => {
+    let isMounted = true;
+    CloudStorage.listRoleProblems(employee.selectedRole?.title, employee.department).then(data => {
+      if (isMounted && data && data.length > 0) {
+        setRoleProblems(data);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [employee.selectedRole?.title, employee.department]);
+
+  // Fetch employee progress from Supabase and subscribe to realtime updates
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProgress = async () => {
+      const list = await CloudStorage.getEmployeeProgress(employee.empId);
+      if (isMounted) setEmployeeProgress(list);
+    };
+
+    fetchProgress();
+
+    const sub = CloudStorage.subscribeToEmployeeProgress(employee.empId, () => {
+      fetchProgress();
+    });
+
+    return () => {
+      isMounted = false;
+      sub.unsubscribe();
+    };
+  }, [employee.empId]);
+
   // Live corporate clock
   useEffect(() => {
     const updateTime = () => {
@@ -66,10 +99,13 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Compute problems chain
-  const problems = employee.selectedRole?.problems || [];
+  // Compute problems chain and cloud synced progress
+  const problems = roleProblems.length > 0 ? roleProblems : (employee.selectedRole?.problems || []);
   const mergedPrs = pullRequests.filter(p => p.status === 'approved_merged');
-  const completedIssuesSet = new Set(mergedPrs.map(p => p.issue_no));
+  const completedIssuesSet = new Set([
+    ...mergedPrs.map(p => p.issue_no),
+    ...employeeProgress.filter(p => p.status === 'completed').map(p => p.issue_no)
+  ]);
   
   const completedTasks = problems.filter(p => completedIssuesSet.has(p.issue_no));
   const remainingTasks = problems.filter(p => !completedIssuesSet.has(p.issue_no));
@@ -77,8 +113,13 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   const queuedTasks = remainingTasks.slice(1);
 
   const baseInductionXp = 200;
-  const earnedXp = completedTasks.length * 50;
-  const totalXp = baseInductionXp + earnedXp;
+  const earnedXp = completedTasks.reduce((acc, t) => acc + (t.level === 'Hard' ? 100 : t.level === 'Medium' ? 75 : 50), 0);
+  const totalXp = Math.max(employee.totalXp || 200, baseInductionXp + earnedXp);
+
+  const handleOpenStudioAndTrack = (task: ProblemIssue) => {
+    CloudStorage.recordTaskProgress(employee.empId, task.repo, task.issue_no, 'in_progress');
+    onOpenStudio(task);
+  };
 
   // Manager PR actions
   const handleApprovePr = async (pr: PullRequest, feedback: string) => {
@@ -91,6 +132,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
       reviewedAt: new Date().toISOString()
     };
     await CloudStorage.savePullRequest(updated);
+    await CloudStorage.recordTaskCompletion(employee.empId, pr.repo, pr.issue_no, pr.id, 50);
     const refreshed = await CloudStorage.listPullRequests();
     setPullRequests(refreshed);
     showToast({
@@ -417,7 +459,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               completedCount={completedTasks.length}
               totalXp={totalXp}
               queuedTasks={queuedTasks}
-              onOpenStudio={onOpenStudio}
+              onOpenStudio={handleOpenStudioAndTrack}
               onNavigate={(area) => setActiveArea(area as TabType)}
             />
           )}
@@ -437,7 +479,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               activeTask={activeTask}
               completedTasks={completedTasks}
               queuedTasks={queuedTasks}
-              onOpenStudio={onOpenStudio}
+              onOpenStudio={handleOpenStudioAndTrack}
             />
           )}
 
@@ -445,7 +487,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
             <AreaProjects
               activeTask={activeTask}
               queuedTasks={queuedTasks}
-              onOpenStudio={onOpenStudio}
+              onOpenStudio={handleOpenStudioAndTrack}
             />
           )}
 

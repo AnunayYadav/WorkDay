@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import type { PullRequest, EmployeeState } from '../types';
-import { PROBLEMS_DATASET } from './dataset';
+import type { PullRequest, EmployeeState, ProblemIssue, EmployeeProgressRecord } from '../types';
+import { PROBLEMS_DATASET, ALL_REPOSITORIES } from './dataset';
 
 // Supabase Modern API Connection Credentials
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.supabase.co';
@@ -163,7 +163,8 @@ export const CloudStorage = {
               avatarUrl: data.avatar_url,
               authProvider: data.auth_provider,
               userId: data.user_id,
-              userType: 'employee'
+              userType: 'employee',
+              totalXp: data.total_xp || 200
             };
           }
         }
@@ -174,7 +175,23 @@ export const CloudStorage = {
 
     // Active session check
     const raw = sessionStorage.getItem('vhq_active_emp');
-    return raw ? JSON.parse(raw) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (isSupabaseConfigured && parsed?.empId) {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('total_xp')
+            .eq('emp_id', parsed.empId)
+            .maybeSingle();
+          if (data?.total_xp) {
+            parsed.totalXp = data.total_xp;
+          }
+        } catch (_) {}
+      }
+      return parsed;
+    }
+    return null;
   },
 
   async clearEmployee(): Promise<void> {
@@ -272,6 +289,212 @@ export const CloudStorage = {
       }
     }
     return true;
+  },
+
+  /**
+   * Fetch repositories live from Supabase (or fallback to local dataset)
+   */
+  async listRepositories(department: string = 'engineering'): Promise<any[]> {
+    if (isSupabaseConfigured) {
+      try {
+        let query = supabase.from('repositories').select('*');
+        if (department && department !== 'all') {
+          query = query.eq('department', department);
+        }
+        const { data, error } = await query.order('name', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          return data.map(row => ({
+            id: row.id,
+            repo: row.id,
+            name: row.name,
+            owner: row.owner,
+            url: row.url,
+            desc: row.description || '',
+            tags: Array.isArray(row.tags) ? row.tags : [],
+            stars: String(row.stars || '128'),
+            forks: String(row.forks || '45'),
+            language: row.language || 'TypeScript',
+            department: row.department || 'engineering',
+            issues: []
+          }));
+        }
+      } catch (e) {
+        console.error('[Supabase Cloud] Error fetching repositories:', e);
+      }
+    }
+    return ALL_REPOSITORIES;
+  },
+
+  /**
+   * Fetch role-wise assigned problems live from Supabase
+   */
+  async listRoleProblems(roleTitle?: string, department: string = 'engineering'): Promise<ProblemIssue[]> {
+    if (isSupabaseConfigured) {
+      try {
+        let query = supabase.from('role_problems').select('*');
+        if (roleTitle) {
+          query = query.ilike('role_title', `%${roleTitle.trim()}%`);
+        } else if (department && department !== 'all') {
+          query = query.eq('department', department);
+        }
+
+        const { data, error } = await query.order('s_no', { ascending: true });
+        if (!error && data && data.length > 0) {
+          return data.map(row => ({
+            s_no: String(row.s_no),
+            issue_no: row.issue_no,
+            level: row.level,
+            role: row.role_title,
+            repo: row.repo,
+            url: row.issue_url,
+            role_heading: row.role_title
+          }));
+        }
+      } catch (e) {
+        console.error('[Supabase Cloud] Error fetching role problems:', e);
+      }
+    }
+
+    // Fallback to local dataset if cloud is not yet seeded
+    if (roleTitle) {
+      for (const dept of Object.keys(PROBLEMS_DATASET.DEPARTMENT_ROLES)) {
+        const roles = (PROBLEMS_DATASET.DEPARTMENT_ROLES as any)[dept];
+        const match = roles.find((r: any) => r.title.toLowerCase().includes(roleTitle.toLowerCase()));
+        if (match && match.problems) {
+          return match.problems;
+        }
+      }
+    }
+    return [];
+  },
+
+  /**
+   * Fetch employee's progress records from Supabase
+   */
+  async getEmployeeProgress(empId: string): Promise<EmployeeProgressRecord[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('employee_progress')
+          .select('*')
+          .eq('emp_id', empId);
+
+        if (!error && data) {
+          return data.map(row => ({
+            id: row.id,
+            emp_id: row.emp_id,
+            repo: row.repo,
+            issue_no: row.issue_no,
+            status: row.status,
+            pr_id: row.pr_id,
+            xp_awarded: row.xp_awarded,
+            completed_at: row.completed_at
+          }));
+        }
+      } catch (e) {
+        console.error('[Supabase Cloud] Error fetching employee progress:', e);
+      }
+    }
+    return [];
+  },
+
+  /**
+   * Record task in-progress or submitted status
+   */
+  async recordTaskProgress(
+    empId: string,
+    repo: string,
+    issueNo: string,
+    status: 'in_progress' | 'submitted' | 'completed',
+    prId?: string,
+    xpEarned: number = 0
+  ): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('employee_progress').upsert({
+          emp_id: empId,
+          repo,
+          issue_no: issueNo,
+          status,
+          pr_id: prId || null,
+          xp_awarded: xpEarned,
+          completed_at: status === 'completed' ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'emp_id,repo,issue_no' });
+        return true;
+      } catch (e) {
+        console.error('[Supabase Cloud] Error recording task progress:', e);
+      }
+    }
+    return true;
+  },
+
+  /**
+   * Record task completion and sync XP directly to employee profile in Supabase
+   */
+  async recordTaskCompletion(empId: string, repo: string, issueNo: string, prId: string, xpEarned: number = 50): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        // 1. Upsert employee progress
+        await supabase.from('employee_progress').upsert({
+          emp_id: empId,
+          repo,
+          issue_no: issueNo,
+          pr_id: prId,
+          status: 'completed',
+          xp_awarded: xpEarned,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'emp_id,repo,issue_no' });
+
+        // 2. Fetch current profile XP and increment
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('total_xp')
+          .eq('emp_id', empId)
+          .maybeSingle();
+
+        const currentXp = profile?.total_xp || 200;
+        await supabase
+          .from('profiles')
+          .update({
+            total_xp: currentXp + xpEarned,
+            updated_at: new Date().toISOString()
+          })
+          .eq('emp_id', empId);
+
+        return true;
+      } catch (e) {
+        console.error('[Supabase Cloud] Error recording task completion:', e);
+      }
+    }
+    return true;
+  },
+
+  /**
+   * Subscribe to live Supabase Realtime progress updates for this employee
+   */
+  subscribeToEmployeeProgress(empId: string, onUpdate: (payload: any) => void) {
+    if (!isSupabaseConfigured) return { unsubscribe: () => {} };
+
+    const channel = supabase
+      .channel(`public:employee_progress:${empId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'employee_progress',
+        filter: `emp_id=eq.${empId}`
+      }, payload => {
+        onUpdate(payload);
+      })
+      .subscribe();
+
+    return {
+      unsubscribe: () => {
+        supabase.removeChannel(channel);
+      }
+    };
   },
 
   /**

@@ -27,13 +27,22 @@ wss.on('connection', (ws) => {
 
   ptyProcess.stdout.on('data', (data) => {
     if (ws.readyState === ws.OPEN) {
-      ws.send(data.toString('utf-8'));
+      let str = data.toString('utf-8');
+      if (isWindows) {
+        // Convert raw backspaces (\x08) to VT100 erase sequence (\b \b) so xterm visually clears character
+        str = str.replace(/\x08/g, '\b \b');
+      }
+      ws.send(str);
     }
   });
 
   ptyProcess.stderr.on('data', (data) => {
     if (ws.readyState === ws.OPEN) {
-      ws.send(data.toString('utf-8'));
+      let str = data.toString('utf-8');
+      if (isWindows) {
+        str = str.replace(/\x08/g, '\b \b');
+      }
+      ws.send(str);
     }
   });
 
@@ -52,26 +61,53 @@ wss.on('connection', (ws) => {
     }
   });
 
+  let currentLineChars = 0;
+
   ws.on('message', (message) => {
     try {
-      const msgStr = message.toString();
+      let msgStr = message.toString();
       // Check if message is a JSON control frame (like resize)
       if (msgStr.startsWith('{') && msgStr.includes('"type"')) {
-        const parsed = JSON.parse(msgStr);
-        if (parsed.type === 'resize') {
-          // Window resize hint if needed
-          return;
-        }
+        return;
       }
-      // Otherwise pipe data directly into shell stdin
+      
+      // Enter key - reset line counter
+      if (msgStr === '\r' || msgStr === '\n' || msgStr === '\r\n') {
+        currentLineChars = 0;
+        if (ptyProcess.stdin && !ptyProcess.stdin.destroyed) {
+          ptyProcess.stdin.write('\r\n');
+        }
+        return;
+      }
+
+      // Backspace key (\x7f or \x08)
+      if (msgStr === '\x7f' || msgStr === '\x08') {
+        if (currentLineChars > 0) {
+          currentLineChars--;
+          if (ptyProcess.stdin && !ptyProcess.stdin.destroyed) {
+            ptyProcess.stdin.write(isWindows ? '\x08' : '\x7f');
+          }
+        }
+        // At start of prompt (0 characters typed), ignore so PowerShell never hangs
+        return;
+      }
+
+      // Ctrl+C (SIGINT)
+      if (msgStr === '\x03') {
+        currentLineChars = 0;
+        if (ptyProcess.stdin && !ptyProcess.stdin.destroyed) {
+          ptyProcess.stdin.write('\x03');
+        }
+        return;
+      }
+
+      // Normal characters
+      currentLineChars += msgStr.length;
       if (ptyProcess.stdin && !ptyProcess.stdin.destroyed) {
         ptyProcess.stdin.write(msgStr);
       }
-    } catch {
-      // Direct raw data fallback
-      if (ptyProcess.stdin && !ptyProcess.stdin.destroyed) {
-        ptyProcess.stdin.write(message.toString());
-      }
+    } catch (e) {
+      console.error('[VirtualHQ Terminal Bridge] Message error:', e);
     }
   });
 

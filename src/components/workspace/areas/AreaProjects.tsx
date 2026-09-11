@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ProblemIssue } from '../../../types';
 import { ALL_REPOSITORIES } from '../../../lib/dataset';
+import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaProjectsProps {
   activeTask: ProblemIssue | null;
@@ -13,14 +14,23 @@ export const AreaProjects: React.FC<AreaProjectsProps> = ({
   queuedTasks,
   onOpenStudio
 }) => {
+  const [repositories, setRepositories] = useState<any[]>(ALL_REPOSITORIES);
   const [filterType, setFilterType] = useState<'all' | 'active' | 'locked'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    CloudStorage.listRepositories().then(repos => {
+      if (repos && repos.length > 0) {
+        setRepositories(repos);
+      }
+    });
+  }, []);
 
   const activeRepoName = activeTask ? activeTask.repo.toLowerCase() : '';
   const upcomingRepoSet = new Set(queuedTasks.map(p => (p.repo || '').toLowerCase()));
 
-  const filtered = ALL_REPOSITORIES.filter(repo => {
-    const rName = repo.repo.toLowerCase();
+  const filtered = repositories.filter(repo => {
+    const rName = (repo.repo || repo.id || '').toLowerCase();
     const isCurrent = activeRepoName && (rName === activeRepoName);
     const isUpcoming = upcomingRepoSet.has(rName);
     const isLocked = !isCurrent && !isUpcoming;
@@ -30,11 +40,11 @@ export const AreaProjects: React.FC<AreaProjectsProps> = ({
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = repo.name.toLowerCase().includes(q);
-      const matchRepo = repo.repo.toLowerCase().includes(q);
-      const matchDesc = repo.desc.toLowerCase().includes(q);
-      const matchTags = repo.tags.some(t => t.toLowerCase().includes(q));
-      const matchIssues = repo.issues.some(iss =>
+      const matchName = (repo.name || '').toLowerCase().includes(q);
+      const matchRepo = rName.includes(q);
+      const matchDesc = (repo.desc || repo.description || '').toLowerCase().includes(q);
+      const matchTags = Array.isArray(repo.tags) && repo.tags.some((t: string) => t.toLowerCase().includes(q));
+      const matchIssues = Array.isArray(repo.issues) && repo.issues.some((iss: any) =>
         ('#' + iss.issue_no).includes(q) ||
         (iss.role || '').toLowerCase().includes(q) ||
         (iss.level || '').toLowerCase().includes(q)
@@ -44,6 +54,8 @@ export const AreaProjects: React.FC<AreaProjectsProps> = ({
 
     return true;
   });
+
+
 
   return (
     <section className="workspace-area active" id="areaProjects">
@@ -158,7 +170,7 @@ export const AreaProjects: React.FC<AreaProjectsProps> = ({
                 <p className="repo-desc">{repo.desc}</p>
 
                 <div className="repo-tags-row">
-                  {repo.tags.map(tag => (
+                  {(repo.tags || []).map((tag: string) => (
                     <span key={tag} className="role-tag">{tag}</span>
                   ))}
                 </div>
@@ -181,10 +193,10 @@ export const AreaProjects: React.FC<AreaProjectsProps> = ({
                 <div className="repo-issues-section">
                   <div className="issues-section-header">
                     <span className="issues-sec-title">ISSUES IN THIS REPOSITORY</span>
-                    <span className="issues-count mono">{repo.issues.length} available</span>
+                    <span className="issues-count mono">{(repo.issues || []).length} available</span>
                   </div>
                   <div className="repo-issues-list">
-                    {repo.issues.slice(0, 4).map(iss => {
+                    {(repo.issues || []).slice(0, 4).map((iss: any) => {
                       const lvl = (iss.level || 'medium').toLowerCase();
                       return (
                         <div key={iss.s_no} className="repo-issue-item">

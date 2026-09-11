@@ -90,7 +90,42 @@ export const RealTerminal: React.FC<RealTerminalProps> = () => {
     termInstanceRef.current = term;
     fitAddonRef.current = fitAddon;
 
+    let inputBuffer = '';
+
     term.onData((data) => {
+      // Enter key (dispatch command and reset line buffer)
+      if (data === '\r' || data === '\n' || data === '\r\n') {
+        inputBuffer = '';
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.send('\r\n');
+        }
+        return;
+      }
+
+      // Backspace key (\x7f or \x08)
+      if (data === '\x7f' || data === '\x08') {
+        // Only allow backspacing if user has actually typed characters on this line
+        if (inputBuffer.length > 0) {
+          inputBuffer = inputBuffer.slice(0, -1);
+          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send('\x7f');
+          }
+        }
+        // At beginning of prompt (or space after >), safely ignore backspace so cursor never hangs
+        return;
+      }
+
+      // Ctrl+C (SIGINT)
+      if (data === '\x03') {
+        inputBuffer = '';
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.send('\x03');
+        }
+        return;
+      }
+
+      // Normal keystrokes
+      inputBuffer += data;
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.send(data);
       }
