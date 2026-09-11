@@ -31,7 +31,7 @@ export const LivePreviewer: React.FC<LivePreviewerProps> = ({ code, repo, issueN
         <div class="sprint-solution-container">
           <h3>${repo} — Live Preview</h3>
           <span class="status-badge">Hot Reload Active</span>
-          <p>Live sandbox executing code from <code>SolutionPatch.tsx</code></p>
+          <p>Live sandbox executing active code from workspace</p>
         </div>
       `;
     }
