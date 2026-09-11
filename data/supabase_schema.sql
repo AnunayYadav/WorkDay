@@ -170,7 +170,10 @@ BEGIN
     role_title,
     role_level,
     total_xp,
-    is_signed
+    is_signed,
+    company_name,
+    company_domain,
+    user_type
   ) VALUES (
     new.id,
     generated_emp_id,
@@ -186,9 +189,16 @@ BEGIN
     'Frontend Developer (Junior)',
     'LEVEL 1 · JUNIOR',
     200,
-    false
+    false,
+    COALESCE(new.raw_user_meta_data->>'company_name', 'Stripe'),
+    COALESCE(new.raw_user_meta_data->>'company_domain', 'stripe.corp'),
+    COALESCE(new.raw_user_meta_data->>'user_type', 'employee')
   )
-  ON CONFLICT (user_id) DO NOTHING;
+  ON CONFLICT (user_id) DO UPDATE SET
+    user_type = COALESCE(EXCLUDED.user_type, public.profiles.user_type),
+    company_name = COALESCE(EXCLUDED.company_name, public.profiles.company_name),
+    company_domain = COALESCE(EXCLUDED.company_domain, public.profiles.company_domain),
+    updated_at = now();
 
   RETURN new;
 EXCEPTION WHEN OTHERS THEN
