@@ -90,7 +90,7 @@ export const AuthService = {
 
   async signInWithEmail(email: string, password: string): Promise<{ success: boolean; error?: string; user?: any }> {
     if (!isSupabaseConfigured) {
-      return { success: false, error: 'SUPABASE_NOT_CONFIGURED' };
+      return { success: false, error: 'Supabase project credentials are not configured.' };
     }
     try {
       let targetEmail = email.trim().toLowerCase();
@@ -110,10 +110,18 @@ export const AuthService = {
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        let msg = error.message;
+        if (msg.includes('Invalid login credentials')) {
+          msg = 'Incorrect email or password, or this account is not registered yet. Please check your credentials or switch to Register.';
+        } else if (msg.includes('Email not confirmed')) {
+          msg = 'Please confirm your email address before signing in, or disable email confirmation in Supabase settings.';
+        }
+        return { success: false, error: msg };
+      }
       return { success: true, user: data.user };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Unable to connect to authentication service.' };
     }
   },
 
@@ -124,7 +132,7 @@ export const AuthService = {
     githubUsername?: string
   ): Promise<{ success: boolean; error?: string; user?: any; corporateEmail?: string }> {
     if (!isSupabaseConfigured) {
-      return { success: false, error: 'SUPABASE_NOT_CONFIGURED' };
+      return { success: false, error: 'Supabase project credentials are not configured.' };
     }
     try {
       const cleanGh = (githubUsername || '').trim().replace(/^@/, '');
@@ -141,10 +149,18 @@ export const AuthService = {
           }
         }
       });
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        let msg = error.message;
+        if (msg.includes('User already registered')) {
+          msg = 'An account with this email already exists. Please switch to Sign In.';
+        } else if (msg.includes('Password should be at least')) {
+          msg = 'Password must be at least 6 characters long.';
+        }
+        return { success: false, error: msg };
+      }
       return { success: true, user: data.user };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Registration service unavailable.' };
     }
   },
 

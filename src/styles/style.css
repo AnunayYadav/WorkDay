@@ -7648,6 +7648,11 @@ code, pre, .code-font, .code-editor, .terminal-text {
   transition: all 0.15s ease;
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .btn-repo-solve:hover {
   background: #38bdf8;
   color: #082f49;

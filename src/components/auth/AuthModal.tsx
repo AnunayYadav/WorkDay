@@ -23,6 +23,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Supabase Configuration State (if not configured in .env)
   const [showConfig, setShowConfig] = useState(!isSupabaseConfigured);
@@ -69,13 +70,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!isSupabaseConfigured) {
       setShowConfig(true);
       return;
     }
 
     if (!email.trim() || !password.trim()) {
-      showToast({ title: 'Fields Required', message: 'Please enter both email and password.', type: 'warning' });
+      setAuthError('Please provide both email and password.');
       return;
     }
 
@@ -113,7 +115,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           type: 'success'
         });
       } else {
-        showToast({ title: 'Sign Up Failed', message: res.error || 'Could not register user in Supabase.', type: 'error' });
+        const errMsg = res.error || 'Could not register user. Please check your credentials and try again.';
+        setAuthError(errMsg);
+        showToast({ title: 'Sign Up Failed', message: errMsg, type: 'error' });
       }
     } else {
       const res = await AuthService.signInWithEmail(email, password);
@@ -151,7 +155,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
         showToast({ title: 'Authenticated', message: 'Signed in successfully with Supabase.', type: 'success' });
       } else {
-        showToast({ title: 'Authentication Failed', message: res.error || 'Invalid credentials in Supabase Auth.', type: 'error' });
+        const errMsg = res.error || 'Invalid credentials in Supabase Auth.';
+        setAuthError(errMsg);
+        showToast({ title: 'Sign In Failed', message: errMsg, type: 'error' });
       }
     }
   };
@@ -374,6 +380,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </p>
             </div>
 
+            {/* User-facing error callout */}
+            {authError && (
+              <div style={{
+                padding: '0.75rem 0.95rem',
+                borderRadius: '10px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.65rem'
+              }}>
+                <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '2px' }}>⚠️</span>
+                <div style={{ flex: 1, fontSize: '0.78rem', color: '#fca5a5', lineHeight: 1.45 }}>
+                  {authError}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAuthError(null)}
+                  style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '12px', padding: 0 }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Email & GitHub Handle Authentication Form */}
             <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {isSignUp && (
@@ -386,7 +418,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       type="text"
                       required
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        if (authError) setAuthError(null);
+                      }}
                       placeholder="e.g. Jordan Hayes"
                       style={{
                         width: '100%',
@@ -415,7 +450,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         type="text"
                         required
                         value={githubUsername}
-                        onChange={(e) => setGithubUsername(e.target.value)}
+                        onChange={(e) => {
+                          setGithubUsername(e.target.value);
+                          if (authError) setAuthError(null);
+                        }}
                         placeholder="your-github-username"
                         style={{
                           width: '100%',
@@ -447,7 +485,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (authError) setAuthError(null);
+                  }}
                   placeholder={isSignUp ? "e.g. yourname@gmail.com or student@college.edu" : "your.email@gmail.com or name@virtualhq.corp"}
                   style={{
                     width: '100%',
@@ -501,18 +542,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   fontWeight: 600,
                   fontSize: '0.88rem',
                   cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1,
+                  opacity: loading ? 0.75 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
                   transition: 'opacity 0.2s ease, transform 0.1s ease',
                   boxShadow: '0 4px 14px rgba(255, 255, 255, 0.12)'
                 }}
               >
-                {loading ? 'Processing...' : (isSignUp ? 'Create Student Account →' : 'Sign In to Workspace →')}
+                {loading ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                      <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
+                    </svg>
+                    <span>Verifying with Supabase...</span>
+                  </>
+                ) : (
+                  isSignUp ? 'Create Student Account →' : 'Sign In to Workspace →'
+                )}
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '0.35rem' }}>
                 <button
                   type="button"
-                  onClick={() => setIsSignUp(!isSignUp)}
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setAuthError(null);
+                  }}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -522,7 +580,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     textDecoration: 'underline'
                   }}
                 >
-                  {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Register with GitHub username'}
+                  {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Register with student email'}
                 </button>
               </div>
             </form>
