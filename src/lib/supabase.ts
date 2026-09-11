@@ -202,24 +202,33 @@ export const AuthService = {
  */
 export const CloudStorage = {
   async saveEmployee(data: EmployeeState): Promise<boolean> {
+    // 1. Immediately cache in localStorage & sessionStorage so client state is instant and never lost
+    try {
+      localStorage.setItem('vhq_active_emp', JSON.stringify(data));
+      sessionStorage.setItem('vhq_active_emp', JSON.stringify(data));
+    } catch (_) {}
+
     if (isSupabaseConfigured) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        const effectiveUserId = data.userId || user?.id;
+        let effectiveUserId = data.userId;
+        let authEmail = data.email;
+
+        if (!effectiveUserId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          effectiveUserId = user?.id;
+          authEmail = authEmail || user?.email;
+        }
+
+        if (!effectiveUserId) {
+          const { data: { session } } = await supabase.auth.getSession();
+          effectiveUserId = session?.user?.id;
+          authEmail = authEmail || session?.user?.email;
+        }
 
         if (effectiveUserId) {
-          // Check for existing profile by user_id to update primary record without conflict errors
-          const { data: existingRows } = await supabase
-            .from('profiles')
-            .select('id, emp_id')
-            .eq('user_id', effectiveUserId)
-            .order('updated_at', { ascending: false });
-
-          const establishedEmpId = data.empId || (existingRows && existingRows[0]?.emp_id) || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`;
-
           const profilePayload = {
             user_id: effectiveUserId,
-            emp_id: establishedEmpId,
+            emp_id: data.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
             full_name: data.fullName || 'Engineering Recruit',
             preferred_name: data.preferredName || (data.fullName ? data.fullName.split(' ')[0] : 'Engineer'),
             handle: data.handle || 'engineer',
@@ -228,40 +237,55 @@ export const CloudStorage = {
             role_level: data.selectedRole?.level || 'LEVEL 1 · JUNIOR',
             is_signed: Boolean(data.isSigned),
             signature_url: data.signatureDataUrl || '',
-            auth_provider: data.authProvider || (user?.app_metadata?.provider as any) || 'email',
+            auth_provider: data.authProvider || 'email',
             avatar_url: data.avatarUrl || '',
-            email: data.email || user?.email || '',
+            email: authEmail || data.email || '',
             corporate_email: data.corporateEmail || `${data.handle || 'engineer'}@virtualhq.corp`,
             github_username: data.githubUsername || data.handle || '',
             total_xp: data.totalXp ?? 200,
             updated_at: new Date().toISOString()
           };
 
-          if (existingRows && existingRows.length > 0) {
-            const primaryId = existingRows[0].id;
-            const { error: updateErr } = await supabase
+          // 1. Try updating existing row by user_id
+          const { data: updatedRows, error: updateErr } = await supabase
+            .from('profiles')
+            .update(profilePayload)
+            .eq('user_id', effectiveUserId)
+            .select();
+
+          let success = !updateErr && Boolean(updatedRows && updatedRows.length > 0);
+
+          if (updateErr) {
+            console.warn('[Supabase Cloud] Full profile update failed:', updateErr.message, '- attempting core update');
+            const corePayload = {
+              user_id: effectiveUserId,
+              full_name: profilePayload.full_name,
+              handle: profilePayload.handle,
+              department: profilePayload.department,
+              role_title: profilePayload.role_title,
+              is_signed: profilePayload.is_signed,
+              signature_url: profilePayload.signature_url,
+              updated_at: profilePayload.updated_at
+            };
+            const { error: coreErr } = await supabase
               .from('profiles')
-              .update(profilePayload)
-              .eq('id', primaryId);
+              .update(corePayload)
+              .eq('user_id', effectiveUserId);
 
-            if (updateErr) {
-              console.error('[Supabase Cloud] Error updating profile by id:', updateErr.message);
+            if (!coreErr) {
+              success = true;
             }
+          }
 
-            // Clean up any stale duplicate profiles for this user_id
-            if (existingRows.length > 1) {
-              const extraIds = existingRows.slice(1).map(r => r.id);
-              await supabase.from('profiles').delete().in('id', extraIds);
-            }
-          } else {
+          // 2. If no existing row updated, insert new profile
+          if (!success) {
             const { error: insertErr } = await supabase
               .from('profiles')
               .insert(profilePayload);
 
             if (insertErr) {
-              console.error('[Supabase Cloud] Error inserting employee profile:', insertErr.message);
-              // Fallback upsert on emp_id
-              await supabase.from('profiles').upsert(profilePayload, { onConflict: 'emp_id' });
+              console.warn('[Supabase Cloud] Insert retry with upsert:', insertErr.message);
+              await supabase.from('profiles').upsert(profilePayload, { onConflict: 'user_id' });
             }
           }
         }
@@ -270,10 +294,6 @@ export const CloudStorage = {
       }
     }
 
-    try {
-      localStorage.setItem('vhq_active_emp', JSON.stringify(data));
-      sessionStorage.setItem('vhq_active_emp', JSON.stringify(data));
-    } catch (_) {}
     return true;
   },
 
@@ -328,6 +348,27 @@ export const CloudStorage = {
           || allRoles.find((r: any) => r.title === data.role_title)
           || deptRoles[0];
 
+        let isSignedVal = Boolean(data.is_signed);
+        let sigUrl = data.signature_url || '';
+
+        // Check local cache: if user completed onboarding in browser but cloud is lagging, preserve isSigned
+        try {
+          const cachedStr = localStorage.getItem('vhq_active_emp');
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr) as EmployeeState;
+            if (cached && cached.isSigned && !isSignedVal) {
+              isSignedVal = true;
+              sigUrl = sigUrl || cached.signatureDataUrl;
+              // Sync back to Supabase
+              supabase.from('profiles').update({
+                is_signed: true,
+                signature_url: sigUrl,
+                updated_at: new Date().toISOString()
+              }).eq('user_id', user.id).then(() => {});
+            }
+          }
+        } catch (_) {}
+
         const meta = user.user_metadata || {};
         const profileEmp: EmployeeState = {
           fullName: data.full_name || meta.full_name || meta.name || 'Engineering Recruit',
@@ -336,9 +377,9 @@ export const CloudStorage = {
           empId: data.emp_id,
           department: data.department || deptKey,
           selectedRole: role,
-          signatureDataUrl: data.signature_url || '',
-          isSigned: Boolean(data.is_signed),
-          currentStep: data.is_signed ? 5 : 1,
+          signatureDataUrl: sigUrl,
+          isSigned: isSignedVal,
+          currentStep: isSignedVal ? 5 : (data.current_step || 1),
           email: data.email || user.email,
           corporateEmail: data.corporate_email || meta.corporate_email || `${data.handle || 'engineer'}@virtualhq.corp`,
           githubUsername: data.github_username || meta.github_username || data.handle || '',
@@ -365,7 +406,9 @@ export const CloudStorage = {
       if (cachedStr) {
         const cached = JSON.parse(cachedStr) as EmployeeState;
         const { data: { user } } = await supabase.auth.getUser();
-        if (user && (cached.userId === user.id || cached.email === user.email)) {
+        if (user && (cached.userId === user.id || cached.email === user.email || !cached.userId)) {
+          cached.userId = user.id;
+          cached.email = cached.email || user.email;
           return cached;
         }
       }

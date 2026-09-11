@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { PROBLEMS_DATASET } from '../../lib/dataset';
+import { CloudStorage } from '../../lib/supabase';
 import type { DepartmentRole, EmployeeState } from '../../types';
 
 interface OnboardingModalProps {
@@ -11,6 +12,35 @@ interface OnboardingModalProps {
 }
 
 type DeptCategory = 'engineering' | 'infrastructure' | 'data' | 'product';
+
+/**
+ * Generate a clean, responsive SVG vector data URL from recorded strokes.
+ * Uses midpoint quadratic bezier smoothing for calligraphic elegance.
+ */
+function generateSvgSignature(strokes: Array<Array<{ x: number; y: number }>>, width = 540, height = 110): string {
+  if (!strokes || strokes.length === 0) return '';
+
+  let pathD = '';
+  for (const stroke of strokes) {
+    if (!stroke || stroke.length === 0) continue;
+    if (stroke.length === 1) {
+      pathD += `M ${stroke[0].x.toFixed(1)} ${stroke[0].y.toFixed(1)} l 0.1 0.1 `;
+      continue;
+    }
+    pathD += `M ${stroke[0].x.toFixed(1)} ${stroke[0].y.toFixed(1)} `;
+    for (let i = 1; i < stroke.length - 1; i++) {
+      const xc = ((stroke[i].x + stroke[i + 1].x) / 2).toFixed(1);
+      const yc = ((stroke[i].y + stroke[i + 1].y) / 2).toFixed(1);
+      pathD += `Q ${stroke[i].x.toFixed(1)} ${stroke[i].y.toFixed(1)}, ${xc} ${yc} `;
+    }
+    const last = stroke[stroke.length - 1];
+    pathD += `L ${last.x.toFixed(1)} ${last.y.toFixed(1)} `;
+  }
+
+  const cleanSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><path d="${pathD.trim()}" fill="none" stroke="#0f172a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(cleanSvg)}`;
+}
 
 const DIALOGUES: Record<number, string> = {
   1: '"Welcome to VirtualHQ. Today marks Day 1 of your corporate journey. Let’s establish your employee identity and corporate handle."',
@@ -40,8 +70,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     initialData?.selectedRole || availableRoles[0]
   );
 
-  // Canvas Signature state
+  // Canvas Signature state & vector stroke recording
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const strokesRef = useRef<Array<Array<{ x: number; y: number }>>>([]);
+  const currentStrokeRef = useRef<Array<{ x: number; y: number }>>([]);
   const [isSigned, setIsSigned] = useState(initialData?.isSigned || false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string>(initialData?.signatureDataUrl || '');
@@ -50,6 +82,32 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   // 3D badge tilt ref
   const badgeCardRef = useRef<HTMLDivElement | null>(null);
   const sheenRef = useRef<HTMLDivElement | null>(null);
+
+  // Helper to persist intermediate onboarding progress to local storage & Supabase
+  const saveProgressDraft = (overrides?: Partial<EmployeeState>) => {
+    const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'engineer';
+    const draft: EmployeeState = {
+      fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
+      preferredName: preferredName.trim() || initialData?.preferredName || 'Engineer',
+      handle: cleanHandle,
+      corporateEmail: `${cleanHandle}@virtualhq.corp`,
+      githubUsername: initialData?.githubUsername || cleanHandle,
+      empId,
+      department: activeDept,
+      selectedRole,
+      signatureDataUrl: signatureUrl || '',
+      isSigned: isSigned,
+      currentStep: step,
+      email: initialData?.email || '',
+      avatarUrl: initialData?.avatarUrl || `https://github.com/${initialData?.githubUsername || cleanHandle}.png`,
+      authProvider: initialData?.authProvider || 'email',
+      userId: initialData?.userId,
+      userType: 'employee',
+      totalXp: initialData?.totalXp || 200,
+      ...overrides
+    };
+    CloudStorage.saveEmployee(draft).catch(() => {});
+  };
 
   // Sync handle and preferredName when full name changes
   useEffect(() => {
@@ -81,7 +139,24 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     }
   }, [initialData]);
 
-  // Handle signature drawing
+  // Re-render saved signature on canvas if opening step 3
+  useEffect(() => {
+    if (step === 3 && canvasRef.current && signatureUrl) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = signatureUrl;
+      }
+    }
+  }, [step, signatureUrl]);
+
+  // Handle signature drawing with vector point capture
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -90,12 +165,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
     setIsDrawing(true);
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    currentStrokeRef.current = [{ x, y }];
 
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 2.6;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#0f172a';
@@ -109,8 +190,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    currentStrokeRef.current.push({ x, y });
 
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -120,6 +207,22 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const stopDrawing = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
+
+    if (currentStrokeRef.current.length > 0) {
+      strokesRef.current.push([...currentStrokeRef.current]);
+      currentStrokeRef.current = [];
+    }
+
+    // Automatically generate exact SVG vector format upon mouse/touch release
+    if (strokesRef.current.length > 0) {
+      const svgUrl = generateSvgSignature(strokesRef.current, 540, 110);
+      if (svgUrl) {
+        setSignatureUrl(svgUrl);
+        setIsSigned(true);
+        // Persist intermediate draft
+        saveProgressDraft({ isSigned: true, signatureDataUrl: svgUrl });
+      }
+    }
   };
 
   const handleClearSig = () => {
@@ -131,14 +234,24 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       setIsSigned(false);
       setSignatureUrl('');
       setStrokeCount(0);
+      strokesRef.current = [];
+      currentStrokeRef.current = [];
+      saveProgressDraft({ isSigned: false, signatureDataUrl: '' });
     }
   };
 
   const handleAdoptSig = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || strokeCount < 3) return;
-    setSignatureUrl(canvas.toDataURL());
-    setIsSigned(true);
+    let finalSig = signatureUrl;
+    if (strokesRef.current.length > 0) {
+      finalSig = generateSvgSignature(strokesRef.current, 540, 110);
+    } else if (canvasRef.current && strokeCount > 0) {
+      finalSig = canvasRef.current.toDataURL();
+    }
+    if (finalSig) {
+      setSignatureUrl(finalSig);
+      setIsSigned(true);
+      saveProgressDraft({ isSigned: true, signatureDataUrl: finalSig });
+    }
   };
 
   // Badge 3D tilt on mousemove
@@ -171,7 +284,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     confetti({
       particleCount: 140,
       spread: 85,
@@ -200,6 +313,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       userType: 'employee',
       totalXp: initialData?.totalXp || 200
     };
+
+    // Instant local & cloud persistence
+    await CloudStorage.saveEmployee(emp);
     onComplete(emp);
   };
 
@@ -386,6 +502,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     id="btnStep1Next"
                     onClick={() => {
                       if (!fullName.trim()) return alert('Please enter your full name');
+                      saveProgressDraft({ currentStep: 2 });
                       setStep(2);
                     }}
                   >
@@ -455,7 +572,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 <button type="button" className="btn-step-back" id="btnStep2Back" onClick={() => setStep(1)}>
                   ← Back
                 </button>
-                <button type="button" className="btn-step-next" id="btnStep2Next" onClick={() => setStep(3)}>
+                <button
+                  type="button"
+                  className="btn-step-next"
+                  id="btnStep2Next"
+                  onClick={() => {
+                    saveProgressDraft({ currentStep: 3, department: activeDept, selectedRole });
+                    setStep(3);
+                  }}
+                >
                   Review Offer Letter →
                 </button>
               </div>
@@ -619,7 +744,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   className={`btn-step-next ${isSigned ? '' : 'disabled'}`}
                   id="btnStep3Next"
                   disabled={!isSigned}
-                  onClick={() => setStep(4)}
+                  onClick={() => {
+                    saveProgressDraft({ currentStep: 4, isSigned: true, signatureDataUrl: signatureUrl });
+                    setStep(4);
+                  }}
                 >
                   Meet Manager & Team →
                 </button>
@@ -677,7 +805,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 <button type="button" className="btn-step-back" id="btnStep4Back" onClick={() => setStep(3)}>
                   ← Back
                 </button>
-                <button type="button" className="btn-step-next" id="btnStep4Next" onClick={() => setStep(5)}>
+                <button
+                  type="button"
+                  className="btn-step-next"
+                  id="btnStep4Next"
+                  onClick={() => {
+                    saveProgressDraft({ currentStep: 5 });
+                    setStep(5);
+                  }}
+                >
                   Issue Corporate Badge →
                 </button>
               </div>

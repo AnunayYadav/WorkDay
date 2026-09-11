@@ -45,8 +45,7 @@ function AppContent() {
       try {
         const session = await AuthService.getSession();
         if (!session?.user) {
-          // Unauthenticated! Clear local cache and stay strictly on landing view
-          await CloudStorage.clearEmployee();
+          // Unauthenticated: only reset views, do not prematurely wipe localStorage in case session is hydrating
           if (isMounted) {
             setEmployee(null);
             setCurrentView('landing');
@@ -57,7 +56,27 @@ function AppContent() {
 
         // Live Supabase user session exists: query Supabase profiles
         const user = session.user;
-        const saved = await CloudStorage.getEmployee();
+        let saved = await CloudStorage.getEmployee();
+
+        // Check localStorage cache: if user completed onboarding, prioritize isSigned: true
+        try {
+          const cachedStr = localStorage.getItem('vhq_active_emp');
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr) as EmployeeState;
+            if (cached && (cached.userId === user.id || cached.email === user.email || !cached.userId)) {
+              if (cached.isSigned) {
+                saved = {
+                  ...(saved || {}),
+                  ...cached,
+                  isSigned: true,
+                  userId: user.id
+                };
+                // Background sync to ensure Supabase database matches
+                CloudStorage.saveEmployee(saved).catch(() => {});
+              }
+            }
+          }
+        } catch (_) {}
 
         if (!isMounted) return;
 
@@ -108,8 +127,8 @@ function AppContent() {
     const authListener = AuthService.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      // Ignore INITIAL_SESSION to prevent racing with initAuth on page refresh
-      if (event === 'INITIAL_SESSION') {
+      // Ignore INITIAL_SESSION and TOKEN_REFRESHED to prevent racing with initAuth on page refresh
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         return;
       }
 
@@ -124,7 +143,26 @@ function AppContent() {
 
       if (event === 'SIGNED_IN' && session?.user) {
         const user = session.user;
-        const existing = await CloudStorage.getEmployee();
+        let existing = await CloudStorage.getEmployee();
+
+        // Check localStorage cache: never kick an already-onboarded user back to onboarding!
+        try {
+          const cachedStr = localStorage.getItem('vhq_active_emp');
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr) as EmployeeState;
+            if (cached && (cached.userId === user.id || cached.email === user.email || !cached.userId)) {
+              if (cached.isSigned) {
+                existing = {
+                  ...(existing || {}),
+                  ...cached,
+                  isSigned: true,
+                  userId: user.id
+                };
+                CloudStorage.saveEmployee(existing).catch(() => {});
+              }
+            }
+          }
+        } catch (_) {}
 
         if (existing && existing.isSigned) {
           setEmployee(existing);
