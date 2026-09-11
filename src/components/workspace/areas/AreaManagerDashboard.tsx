@@ -334,7 +334,6 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
             <button
               className="btn btn-secondary"
               onClick={() => setShowMeetingModal(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polygon points="23 7 16 12 23 17 23 7" />
@@ -343,15 +342,15 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
               Schedule Squad Sync
             </button>
             <button
-              className="btn btn-primary"
+              className="btn btn-accent"
               onClick={() => setShowNewTaskModal(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              style={{ fontWeight: 600 }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              Delegate Sprint Task
+              + Assign Task to Employee
             </button>
           </div>
         </div>
@@ -410,11 +409,10 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
               </h3>
             </div>
             <button
-              className="btn btn-secondary"
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}
+              className="btn btn-accent btn-sm"
               onClick={() => setShowNewTaskModal(true)}
             >
-              + New Ticket
+              + Assign Task to Employee
             </button>
           </div>
 
@@ -471,15 +469,39 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
           </div>
 
           {filteredTasks.length === 0 ? (
-            <div style={{ padding: '3rem 1.5rem', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '8px' }}>
-              <p style={{ color: '#71717a', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+            <div style={{ padding: '3rem 1.5rem', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.12)', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.01)' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                margin: '0 auto 0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#60a5fa'
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+              </div>
+              <h4 style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 600, margin: '0 0 0.4rem' }}>
+                No Sprint Tasks Delegated Yet
+              </h4>
+              <p style={{ color: '#8e8e93', fontSize: '0.82rem', maxWidth: '440px', margin: '0 auto 1.25rem', lineHeight: 1.5 }}>
                 {tasks.length === 0
-                  ? 'No sprint tasks have been delegated yet. Assign tickets to squad engineers to kick off sprint progress.'
-                  : 'No tasks match the active filter or search criteria.'}
+                  ? 'Assign technical deliverables to squad engineers, set target deadlines, define acceptance criteria, and track completion.'
+                  : 'No sprint tasks match the active filter or search criteria.'}
               </p>
               {tasks.length === 0 && (
-                <button className="btn btn-secondary" onClick={() => setShowNewTaskModal(true)}>
-                  Delegate First Ticket
+                <button className="btn btn-accent" onClick={() => setShowNewTaskModal(true)}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  + Assign First Task to Employee
                 </button>
               )}
             </div>
@@ -1186,10 +1208,11 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn btn-accent"
                   disabled={savingTask || !taskTitle.trim()}
+                  style={{ fontWeight: 600 }}
                 >
-                  {savingTask ? 'Assigning...' : 'Confirm Assignment →'}
+                  {savingTask ? 'Assigning...' : 'Confirm & Assign Deliverable →'}
                 </button>
               </div>
             </form>
@@ -1288,8 +1311,9 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn btn-accent"
                   disabled={savingMeeting}
+                  style={{ fontWeight: 600 }}
                 >
                   {savingMeeting ? 'Generating...' : 'Launch Meeting →'}
                 </button>
