@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord, UserRoleType, TaskItem } from '../../types';
+import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord, UserRoleType } from '../../types';
 import { CloudStorage } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 
