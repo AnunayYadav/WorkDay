@@ -1098,11 +1098,35 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       {showNewTaskModal && (
         <div className="modal-backdrop" onClick={() => setShowNewTaskModal(false)}>
           <div className="modal-content executive-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="card-kicker-row">
-              <span className="card-kicker">DIRECT SPRINT DELEGATION</span>
-              <span className="mono" style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
-                {employee.companyName || 'Corporate'} Workspace
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <div className="card-kicker-row" style={{ margin: 0 }}>
+                <span className="card-kicker">DIRECT SPRINT DELEGATION</span>
+                <span className="mono" style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
+                  {employee.companyName || 'Corporate'} Workspace
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewTaskModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#a1a1aa',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  lineHeight: 1,
+                  padding: 0
+                }}
+                title="Close"
+              >
+                ✕
+              </button>
             </div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
               Assign Sprint Deliverable
@@ -1400,8 +1424,32 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       {showMeetingModal && (
         <div className="modal-backdrop" onClick={() => setShowMeetingModal(false)}>
           <div className="modal-content executive-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-            <div className="card-kicker-row">
-              <span className="card-kicker">MEETING LAUNCHER</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <div className="card-kicker-row" style={{ margin: 0 }}>
+                <span className="card-kicker">MEETING LAUNCHER</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMeetingModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#a1a1aa',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  lineHeight: 1,
+                  padding: 0
+                }}
+                title="Close"
+              >
+                ✕
+              </button>
             </div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.4rem' }}>
               Broadcast Squad Meeting
