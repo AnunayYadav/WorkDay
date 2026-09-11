@@ -144,12 +144,33 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="tasks-empty-state">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.6">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  <div className="empty-h">Sprint Clear</div>
-                  <div className="empty-sub">No active tasks pending. All deliverables completed!</div>
+                <div className="tasks-empty-state" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem auto',
+                    color: '#a1a1aa'
+                  }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                  </div>
+                  <div className="empty-h" style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
+                    No Active Sprint Deliverable Assigned
+                  </div>
+                  <div className="empty-sub" style={{ fontSize: '0.82rem', color: '#71717a', maxWidth: '380px', margin: '0 auto' }}>
+                    There are currently no active sprint tickets in Supabase. When deliverables are created or assigned, they will appear on your desk.
+                  </div>
                 </div>
               )}
             </div>
@@ -196,12 +217,32 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
           <div id="tasksViewBacklog" className="tasks-subview">
             <div className="backlog-tasks-list" id="tasksBacklogContainer">
               {queuedTasks.length === 0 ? (
-                <div className="tasks-empty-state">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.6" style={{ marginBottom: '0.5rem' }}>
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  <div className="empty-h">Backlog Cleared</div>
-                  <div className="empty-sub">All sprint problem deliverables in your career progression queue are completed.</div>
+                <div className="tasks-empty-state" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem auto',
+                    color: '#a1a1aa'
+                  }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </div>
+                  <div className="empty-h" style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
+                    Backlog Queue Clear
+                  </div>
+                  <div className="empty-sub" style={{ fontSize: '0.82rem', color: '#71717a', maxWidth: '380px', margin: '0 auto' }}>
+                    No upcoming sprint deliverables are queued in Supabase.
+                  </div>
                 </div>
               ) : (
                 queuedTasks.map((prob, idx) => (

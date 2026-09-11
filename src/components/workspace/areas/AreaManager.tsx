@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EmployeeState, PullRequest } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
 
 interface InteractiveDiffViewerProps {
@@ -88,13 +89,15 @@ interface AreaManagerProps {
   pullRequests: PullRequest[];
   onApprovePr: (pr: PullRequest, feedback: string) => void;
   onRequestChangesPr: (pr: PullRequest, feedback: string) => void;
+  onNavigate?: (area: string) => void;
 }
 
 export const AreaManager: React.FC<AreaManagerProps> = ({
   employee,
   pullRequests,
   onApprovePr,
-  onRequestChangesPr
+  onRequestChangesPr,
+  onNavigate
 }) => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'review' | 'chat'>('review');
@@ -104,18 +107,10 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
   const [managerFeedback, setManagerFeedback] = useState('');
 
   // Manager dialogue chat
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 'c1',
-      sender: employee.selectedRole?.manager?.name || 'Marcus Vance',
-      time: 'Just now',
-      isMe: false,
-      text: `Welcome to the team! I saw you just wrapped up onboarding. Your primary focus today is ticket #${employee.selectedRole?.problems?.[0]?.issue_no || '104'}. What can I help clarify regarding architecture, test coverage, or our sprint goals?`
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [upcomingMeeting, setUpcomingMeeting] = useState<any | null>(null);
 
-  const selectedPr = pullRequests.find(p => p.id === selectedPrId) || pullRequests[0];
   const mgr = employee.selectedRole?.manager || {
     name: 'Marcus Vance',
     title: 'Engineering Director',
@@ -123,7 +118,22 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
     quote: 'I value clean code, clear communication in standups, and attention to detail. If you are ever blocked on architecture or PR feedback, my door is always open.'
   };
 
-  const handleSendChat = (textToSend?: string) => {
+  useEffect(() => {
+    let isMounted = true;
+    CloudStorage.listMessages(employee.empId, 'manager').then(msgs => {
+      if (isMounted) setChatMessages(msgs || []);
+    });
+    CloudStorage.listMeetings(employee.empId).then(meets => {
+      if (isMounted && meets && meets.length > 0) {
+        setUpcomingMeeting(meets[0]);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [employee.empId]);
+
+  const selectedPr = pullRequests.find(p => p.id === selectedPrId) || pullRequests[0];
+
+  const handleSendChat = async (textToSend?: string) => {
     const text = textToSend || chatInput;
     if (!text.trim()) return;
 
@@ -137,27 +147,28 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
     setChatMessages(prev => [...prev, newMsg]);
     if (!textToSend) setChatInput('');
 
-    setTimeout(() => {
-      let reply = `Good question, ${employee.preferredName}. Keep the implementation focused on the acceptance criteria and make sure all 3 unit assertions pass green in Monaco Studio.`;
+    await CloudStorage.sendMessage(employee.empId, 'manager', newMsg);
+
+    setTimeout(async () => {
+      let reply = `Good question, ${employee.preferredName}. Keep the implementation focused on the acceptance criteria and make sure all unit assertions pass green in Monaco Studio.`;
       if (text.includes('fallback') || text.includes('boundary')) {
-        reply = `For error boundaries, return a clean glassmorphic fallback card with a retry CTA and log the error stack to the monitoring pipeline.`;
+        reply = `For error boundaries, return a clean fallback card with a retry CTA and log the error stack to the monitoring pipeline.`;
       } else if (text.includes('criteria') || text.includes('approving')) {
         reply = `Key approval criteria: zero lint errors, 100% unit test coverage for the touched methods, and clean commit formatting.`;
       } else if (text.includes('deadline')) {
-        reply = `Sprint 01 wraps up end of day Friday. Merging 2 deliverables puts you on track for Level 2 promotion evaluation.`;
+        reply = `Sprint 01 wraps up end of day Friday. Merging deliverables puts you on track for Level 2 promotion evaluation.`;
       }
 
-      setChatMessages(prev => [
-        ...prev,
-        {
-          id: String(Date.now() + 1),
-          sender: mgr.name,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isMe: false,
-          text: reply
-        }
-      ]);
-    }, 1000);
+      const replyMsg = {
+        id: String(Date.now() + 1),
+        sender: mgr.name,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isMe: false,
+        text: reply
+      };
+      setChatMessages(prev => [...prev, replyMsg]);
+      await CloudStorage.sendMessage(employee.empId, 'manager', replyMsg);
+    }, 800);
   };
 
   return (
@@ -192,7 +203,9 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
             <div className="mgr-schedule-box">
               <div className="sched-row">
                 <span className="s-label">Next 1-on-1 Review:</span>
-                <span className="s-val mono">Today at 2:30 PM UTC</span>
+                <span className="s-val mono">
+                  {upcomingMeeting ? (upcomingMeeting.schedule_time || upcomingMeeting.scheduleTime) : 'No session booked'}
+                </span>
               </div>
               <div className="sched-row">
                 <span className="s-label">PR Review SLA:</span>
@@ -200,20 +213,36 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              className="btn-schedule-sync"
-              id="btnBookSync"
-              onClick={() => {
-                showToast({
-                  title: '1-on-1 Agenda Confirmed',
-                  message: `Scheduled today at 2:30 PM with ${mgr.name}.`,
-                  type: 'success'
-                });
-              }}
-            >
-              <span>Confirm 1-on-1 Agenda (Today 2:30 PM)</span>
-            </button>
+            {upcomingMeeting ? (
+              <a
+                href={upcomingMeeting.link || 'https://zoom.us'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-schedule-sync"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              >
+                <span>Join Scheduled 1-on-1 →</span>
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="btn-schedule-sync"
+                id="btnBookSync"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('meetings');
+                  } else {
+                    showToast({
+                      title: 'Schedule 1-on-1',
+                      message: 'Head over to Meetings tab to schedule a live session with your manager.',
+                      type: 'info'
+                    });
+                  }
+                }}
+              >
+                <span>+ Schedule 1-on-1 in Meetings</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -399,15 +428,22 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
             {activeTab === 'chat' && (
               <div>
                 <div className="chat-messages-scroll" id="mgrChatMessages" style={{ maxHeight: '220px', overflowY: 'auto', marginBottom: '0.8rem' }}>
-                  {chatMessages.map(msg => (
-                    <div key={msg.id} className={`chat-bubble ${msg.isMe ? 'user' : 'manager'}`} style={{ marginBottom: '0.6rem' }}>
-                      <div className="bubble-meta">
-                        <span className="bubble-sender" style={{ fontSize: '0.72rem' }}>{msg.sender}</span>
-                        <span className="bubble-time mono" style={{ fontSize: '0.68rem', marginLeft: '0.5rem' }}>{msg.time}</span>
-                      </div>
-                      <div className="bubble-body" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{msg.text}</div>
+                  {chatMessages.length === 0 ? (
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#71717a' }}>
+                      <p style={{ fontSize: '0.85rem', color: '#a1a1aa' }}>No conversation messages yet with {mgr.name}.</p>
+                      <p style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}>Send a question below or pick a prompt topic to begin.</p>
                     </div>
-                  ))}
+                  ) : (
+                    chatMessages.map(msg => (
+                      <div key={msg.id} className={`chat-bubble ${msg.isMe ? 'user' : 'manager'}`} style={{ marginBottom: '0.6rem' }}>
+                        <div className="bubble-meta">
+                          <span className="bubble-sender" style={{ fontSize: '0.72rem' }}>{msg.sender}</span>
+                          <span className="bubble-time mono" style={{ fontSize: '0.68rem', marginLeft: '0.5rem' }}>{msg.time}</span>
+                        </div>
+                        <div className="bubble-body" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{msg.text}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 <div className="prompt-chips-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }}>

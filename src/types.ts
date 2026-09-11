@@ -105,8 +105,29 @@ export interface CalendarEvent {
   synced?: boolean;
   desc: string;
   loc: string;
+  link?: string;
+  platform?: 'google_meet' | 'zoom' | 'teams';
   actionText?: string;
   actionTarget?: 'meetings' | 'manager' | null;
+}
+
+export interface MeetingItem {
+  id: string;
+  title: string;
+  type: 'standup' | 'one_on_one' | 'refinement' | 'custom';
+  platform: 'google_meet' | 'zoom' | 'teams';
+  link: string;
+  meetingId: string;
+  passcode?: string;
+  hostName: string;
+  hostTitle: string;
+  hostInitials: string;
+  scheduleTime: string;
+  duration: string;
+  isLive?: boolean;
+  status: 'upcoming' | 'live' | 'completed';
+  agenda: string[];
+  attendees: string[];
 }
 
 export interface SquadMessage {
@@ -118,3 +139,4 @@ export interface SquadMessage {
   isUser?: boolean;
   isManager?: boolean;
 }
+

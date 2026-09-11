@@ -9,6 +9,10 @@ export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
   const userName = employee?.fullName || 'Corporate Member';
   const userInitials = employee?.preferredName ? employee.preferredName.slice(0, 2).toUpperCase() : 'HQ';
   const roleTitle = employee?.selectedRole?.title || 'Engineer';
+  const deptName = (employee?.department ? employee.department.charAt(0).toUpperCase() + employee.department.slice(1) : 'Engineering') + ' Division';
+  const mgrName = employee?.selectedRole?.manager?.name || 'Executive Director';
+  const mgrTitle = employee?.selectedRole?.manager?.title || 'Division Head';
+  const empIdStr = employee?.empId || 'VHQ-8302';
 
   return (
     <section className="workspace-area active" id="areaCompany">
@@ -133,15 +137,15 @@ export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
                         <span className="a-company">VIRTUALHQ TECHNOLOGIES INC.</span>
                         <span className="a-sub">DIVISION OF HUMAN CAPITAL &amp; EXECUTIVE TALENT</span>
                       </div>
-                      <span className="a-ref mono" id="hrContractRef">REF: VHQ-2026-8302-EMP</span>
+                      <span className="a-ref mono" id="hrContractRef">REF: {empIdStr}-EMP</span>
                     </div>
                     
                     <div className="a-divider"></div>
 
                     <p className="a-body-text">
                       This certifies that <strong id="hrCandidateName">{userName}</strong> has been formally inducted into the position of{' '}
-                      <strong id="hrRoleTitle">{roleTitle}</strong> within the <strong id="hrDeptTitle">Engineering Division</strong>, reporting directly to{' '}
-                      <strong id="hrManagerName">Marcus Vance (Engineering Director)</strong>.
+                      <strong id="hrRoleTitle">{roleTitle}</strong> within the <strong id="hrDeptTitle">{deptName}</strong>, reporting directly to{' '}
+                      <strong id="hrManagerName">{mgrName} ({mgrTitle})</strong>.
                     </p>
 
                     <div className="a-signatures-row">
@@ -152,7 +156,11 @@ export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
                       </div>
                       <div className="a-sig-block">
                         <span className="a-sig-label">EMPLOYEE SIGNATURE</span>
-                        <span className="a-script-sig user-sig" id="hrUserSignatureDisplay">{userName}</span>
+                        {employee?.signatureDataUrl ? (
+                          <img src={employee.signatureDataUrl} alt="Signature" style={{ height: '36px', maxWidth: '140px', objectFit: 'contain' }} />
+                        ) : (
+                          <span className="a-script-sig user-sig" id="hrUserSignatureDisplay">{userName}</span>
+                        )}
                         <span className="a-title" id="hrSigTimestamp">Executed &amp; Verified</span>
                       </div>
                     </div>
@@ -163,12 +171,12 @@ export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
                   </div>
 
                   <div className="contract-download-row">
-                    <span className="archive-sha mono">SHA-256: 8f92b7c4...e1809</span>
+                    <span className="archive-sha mono">SHA-256: {empIdStr}...e1809</span>
                     <button
                       type="button"
                       className="btn-download-contract"
                       id="btnDownloadContract"
-                      onClick={() => alert('Exporting Official VHQ Employment Contract PDF...')}
+                      onClick={() => alert(`Exporting Official VHQ Employment Contract PDF for ${userName}...`)}
                     >
                       <span>Export Contract PDF</span>
                     </button>
@@ -185,12 +193,18 @@ export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
                     <span className="badge-status-green mono">ACTIVE · RFID 13.56MHz</span>
                   </div>
                   <div className="hr-smartcard-summary">
-                    <div className="hr-badge-avatar">{userInitials}</div>
+                    <div className="hr-badge-avatar" style={{ overflow: 'hidden' }}>
+                      {employee?.avatarUrl ? (
+                        <img src={employee.avatarUrl} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        userInitials
+                      )}
+                    </div>
                     <div className="hr-badge-meta">
                       <h4 className="hr-badge-name" id="hrCardName">{userName}</h4>
                       <span className="hr-badge-role" id="hrCardRole">{roleTitle}</span>
-                      <span className="hr-badge-dept mono" id="hrCardDept">ENGINEERING DIVISION</span>
-                      <div className="hr-badge-id mono" id="hrCardId">ID: #VHQ-8302</div>
+                      <span className="hr-badge-dept mono" id="hrCardDept">{deptName.toUpperCase()}</span>
+                      <div className="hr-badge-id mono" id="hrCardId">ID: #{empIdStr}</div>
                     </div>
                   </div>
                 </div>

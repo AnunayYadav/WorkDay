@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EmployeeState } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
+import { useToast } from '../../../lib/toast';
 
 interface AreaTeamProps {
   employee: EmployeeState;
@@ -12,186 +14,228 @@ interface FeedPost {
   name: string;
   time: string;
   content: string;
-  reactions: string;
+  role?: string;
+  reactions?: { likes: number };
 }
 
 export const AreaTeam: React.FC<AreaTeamProps> = ({ employee, onNavigate }) => {
-  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([
-    {
-      id: 'p1',
-      avatar: 'DR',
-      name: 'Devon Reed',
-      time: '15m ago',
-      content: 'Shipped the new token caching layer in core repo! Micro-benchmarks show 34% drop in cold bundle load times. 🎉',
-      reactions: '🔥 8 · 🚀 5'
-    },
-    {
-      id: 'p2',
-      avatar: 'SC',
-      name: 'Sarah Chen',
-      time: '42m ago',
-      content: 'Updated our dark mode HSL tokens in Figma. Check out the clean monochrome contrast in the company design guidelines.',
-      reactions: '❤️ 6 · 👏 4'
-    }
-  ]);
-
+  const { showToast } = useToast();
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [inputPost, setInputPost] = useState('');
+  const [colleagues, setColleagues] = useState<EmployeeState[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const mgr = employee.selectedRole?.manager || {
+    name: 'Marcus Vance',
+    title: 'Engineering Director',
+    initials: 'MV'
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Load registered colleagues from Supabase
+    CloudStorage.listProfiles().then((profiles) => {
+      if (isMounted) {
+        // Filter out self
+        const others = profiles.filter(p => p.empId !== employee.empId && p.fullName);
+        setColleagues(others);
+      }
+    });
+
+    // Load team posts
+    CloudStorage.listTeamPosts().then((posts) => {
+      if (isMounted) {
+        setFeedPosts(posts || []);
+        setLoadingPosts(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [employee.empId]);
+
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputPost.trim()) return;
 
-    const newP: FeedPost = {
-      id: String(Date.now()),
+    const newPost: FeedPost = {
+      id: `post-${Date.now()}`,
       avatar: employee.preferredName?.slice(0, 2).toUpperCase() || 'AM',
       name: employee.fullName,
+      role: employee.selectedRole?.title || 'Engineer',
       time: 'Just now',
       content: inputPost.trim(),
-      reactions: '👍 1'
+      reactions: { likes: 0 }
     };
 
-    setFeedPosts([newP, ...feedPosts]);
+    setFeedPosts(prev => [newPost, ...prev]);
     setInputPost('');
+
+    await CloudStorage.createTeamPost(newPost);
+    showToast({
+      title: 'Update Posted',
+      message: 'Your update has been shared with the squad.',
+      type: 'success'
+    });
   };
 
   return (
     <section className="workspace-area active" id="areaTeam">
       <div className="area-header">
-        <h1 className="area-title">My Team</h1>
-        <p className="area-subtitle">Engineering squad directory, active tasks, and team watercooler.</p>
+        <h1 className="area-title">My Team &amp; Squad Directory</h1>
+        <p className="area-subtitle">
+          Direct colleagues in {employee.department || 'Engineering'}, reporting hierarchy, and team watercooler.
+        </p>
       </div>
 
       <div className="team-grid">
-        {/* Virtual Squad Floor Cards */}
+        {/* Squad Directory Column */}
         <div className="team-roster-col">
           <div className="executive-card squad-roster-card">
             <div className="card-kicker-row">
-              <span className="card-kicker">ENGINEERING SQUAD MEMBERS</span>
-              <span className="online-count mono">4 ONLINE</span>
+              <span className="card-kicker">SQUAD LEADERSHIP &amp; TEAMMATES</span>
+              <span className="online-count mono">{1 + colleagues.length} MEMBERS</span>
             </div>
 
             <div className="squad-members-list">
-              <div className="member-card">
-                <div className="m-avatar">DR</div>
+              {/* Reporting Manager Card */}
+              <div className="member-card" style={{ borderLeft: '3px solid rgba(255, 255, 255, 0.4)' }}>
+                <div className="m-avatar mono">{mgr.initials}</div>
                 <div className="m-info">
                   <div className="m-title-row">
-                    <span className="m-name">Devon Reed</span>
-                    <span className="m-role">Staff Frontend Dev</span>
+                    <span className="m-name">{mgr.name}</span>
+                    <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', fontWeight: 600 }}>
+                      MANAGER
+                    </span>
                   </div>
-                  <span className="m-active-task mono">Active: VHQ-101 GraphQL Caching</span>
-                  <span className="m-tz">Timezone: UTC-4 (New York) · Working</span>
+                  <span className="m-role">{mgr.title}</span>
+                  <span className="m-tz">Reporting Line · Direct Manager</span>
                 </div>
                 <button
                   type="button"
                   className="btn-ping-member"
                   onClick={() => onNavigate('messages')}
                 >
-                  Ping
+                  Message
                 </button>
               </div>
 
-              <div className="member-card">
-                <div className="m-avatar">SC</div>
-                <div className="m-info">
-                  <div className="m-title-row">
-                    <span className="m-name">Sarah Chen</span>
-                    <span className="m-role">UI/UX Engineer</span>
+              {/* Registered Colleagues from Supabase */}
+              {colleagues.map((col) => (
+                <div key={col.empId} className="member-card">
+                  <div className="m-avatar mono" style={{ overflow: 'hidden' }}>
+                    {col.avatarUrl ? (
+                      <img src={col.avatarUrl} alt={col.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      col.preferredName?.slice(0, 2).toUpperCase() || 'EM'
+                    )}
                   </div>
-                  <span className="m-active-task mono">Active: VHQ-108 Design System Token Sync</span>
-                  <span className="m-tz">Timezone: UTC+8 (Singapore) · Working</span>
+                  <div className="m-info">
+                    <div className="m-title-row">
+                      <span className="m-name">{col.fullName}</span>
+                      <span className="mono" style={{ fontSize: '0.65rem', color: '#71717a' }}>{col.empId}</span>
+                    </div>
+                    <span className="m-role">{col.selectedRole?.title || 'Engineer'}</span>
+                    <span className="m-tz mono" style={{ color: '#a1a1aa' }}>
+                      {col.corporateEmail || `${col.handle}@virtualhq.corp`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ping-member"
+                    onClick={() => onNavigate('messages')}
+                  >
+                    Message
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="btn-ping-member"
-                  onClick={() => onNavigate('messages')}
-                >
-                  Ping
-                </button>
-              </div>
+              ))}
 
-              <div className="member-card">
-                <div className="m-avatar">LK</div>
-                <div className="m-info">
-                  <div className="m-title-row">
-                    <span className="m-name">Liam K.</span>
-                    <span className="m-role">QA &amp; Automation Lead</span>
-                  </div>
-                  <span className="m-active-task mono">Active: Playwright E2E Pipeline Validation</span>
-                  <span className="m-tz">Timezone: UTC+1 (London) · Working</span>
+              {colleagues.length === 0 && (
+                <div style={{ padding: '1.5rem 1rem', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '8px', marginTop: '0.75rem' }}>
+                  <p style={{ fontSize: '0.82rem', color: '#a1a1aa', margin: 0, fontWeight: 500 }}>No other colleagues registered yet</p>
+                  <p style={{ fontSize: '0.75rem', color: '#71717a', margin: '0.25rem 0 0 0' }}>
+                    Colleague profiles will appear here automatically when team members sign up in Supabase.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  className="btn-ping-member"
-                  onClick={() => onNavigate('messages')}
-                >
-                  Ping
-                </button>
-              </div>
-
-              <div className="member-card">
-                <div className="m-avatar">PS</div>
-                <div className="m-info">
-                  <div className="m-title-row">
-                    <span className="m-name">Priya Sharma</span>
-                    <span className="m-role">Head of Quality Assurance</span>
-                  </div>
-                  <span className="m-active-task mono">Active: CI/CD Reliability &amp; Release Gates</span>
-                  <span className="m-tz">Timezone: UTC+5:30 (Bangalore) · Working</span>
-                </div>
-                <button
-                  type="button"
-                  className="btn-ping-member"
-                  onClick={() => onNavigate('messages')}
-                >
-                  Ping
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Company Watercooler / Activity Feed */}
-        <div className="team-feed-col">
+        {/* Team Activity / Watercooler Column */}
+        <div className="team-watercooler-col">
           <div className="executive-card watercooler-card">
             <div className="card-kicker-row">
-              <span className="card-kicker">COMPANY WATERCOOLER &amp; FEED</span>
-              <span className="mono" style={{ fontSize: '0.72rem', color: '#71717a' }}>Engineering Lounge</span>
+              <span className="card-kicker">SQUAD ACTIVITY FEED</span>
             </div>
 
-            <form onSubmit={handleCreatePost} style={{ marginBottom: '1.2rem' }}>
-              <div style={{ display: 'flex', gap: '0.6rem' }}>
-                <input
-                  type="text"
-                  className="chat-input"
-                  value={inputPost}
-                  onChange={(e) => setInputPost(e.target.value)}
-                  placeholder="Share sprint win, architecture thought, or kudos..."
-                  style={{ flex: 1, padding: '0.6rem 0.85rem', background: '#090b0e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
-                />
-                <button
-                  type="submit"
-                  className="btn-send-chat"
-                  style={{ padding: '0.6rem 1rem', background: '#ffffff', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
-                >
-                  Post
+            {/* Post Creator */}
+            <form className="watercooler-post-form" onSubmit={handleCreatePost}>
+              <textarea
+                className="wc-input mono"
+                value={inputPost}
+                onChange={(e) => setInputPost(e.target.value)}
+                placeholder="Share a sprint milestone, test result, or note with your squad..."
+                rows={2}
+              />
+              <div className="wc-actions">
+                <button type="submit" className="btn-post-wc" disabled={!inputPost.trim()}>
+                  Post Update →
                 </button>
               </div>
             </form>
 
-            <div className="feed-posts-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-              {feedPosts.map(p => (
-                <div key={p.id} style={{ padding: '0.9rem', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.75rem', color: '#fff' }}>
-                      {p.avatar}
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f3f4f6' }}>{p.name}</span>
-                      <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a', marginLeft: '0.5rem' }}>{p.time}</span>
-                    </div>
+            {/* Posts Stream */}
+            <div className="wc-feed-stream">
+              {loadingPosts && (
+                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#71717a', fontSize: '0.82rem' }}>
+                  Loading updates...
+                </div>
+              )}
+
+              {!loadingPosts && feedPosts.length === 0 && (
+                <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem auto',
+                    color: '#a1a1aa'
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
                   </div>
-                  <p style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.45, margin: '0.3rem 0 0.5rem' }}>{p.content}</p>
-                  <span className="mono" style={{ fontSize: '0.72rem', color: '#f59e0b' }}>{p.reactions}</span>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
+                    No Team Announcements Yet
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: '#71717a', maxWidth: '320px', margin: '0 auto' }}>
+                    Your squad activity feed is quiet. Share your Day 1 progress or deliverable milestone above.
+                  </p>
+                </div>
+              )}
+
+              {!loadingPosts && feedPosts.length > 0 && feedPosts.map((post) => (
+                <div key={post.id} className="wc-post-item">
+                  <div className="post-header">
+                    <div className="post-avatar mono">{post.avatar}</div>
+                    <div className="post-meta">
+                      <span className="post-name">{post.name}</span>
+                      {post.role && <span style={{ fontSize: '0.7rem', color: '#71717a' }}> · {post.role}</span>}
+                    </div>
+                    <span className="post-time mono">{post.time}</span>
+                  </div>
+                  <p className="post-body">{post.content}</p>
                 </div>
               ))}
             </div>

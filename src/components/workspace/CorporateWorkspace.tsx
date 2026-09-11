@@ -40,7 +40,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   const { showToast } = useToast();
   const [activeArea, setActiveArea] = useState<TabType>('home');
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
-  const [roleProblems, setRoleProblems] = useState<ProblemIssue[]>(employee.selectedRole?.problems || []);
+  const [roleProblems, setRoleProblems] = useState<ProblemIssue[]>([]);
   const [employeeProgress, setEmployeeProgress] = useState<EmployeeProgressRecord[]>([]);
   const [liveTime, setLiveTime] = useState<string>('10:45 AM');
 
@@ -61,8 +61,8 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   useEffect(() => {
     let isMounted = true;
     CloudStorage.listRoleProblems(employee.selectedRole?.title, employee.department).then(data => {
-      if (isMounted && data && data.length > 0) {
-        setRoleProblems(data);
+      if (isMounted) {
+        setRoleProblems(data || []);
       }
     });
     return () => { isMounted = false; };
@@ -100,7 +100,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   }, []);
 
   // Compute problems chain and cloud synced progress
-  const problems = roleProblems.length > 0 ? roleProblems : (employee.selectedRole?.problems || []);
+  const problems = roleProblems;
   const mergedPrs = pullRequests.filter(p => p.status === 'approved_merged');
   const completedIssuesSet = new Set([
     ...mergedPrs.map(p => p.issue_no),

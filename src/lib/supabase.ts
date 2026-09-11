@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { PullRequest, EmployeeState, ProblemIssue, EmployeeProgressRecord } from '../types';
-import { PROBLEMS_DATASET, ALL_REPOSITORIES } from './dataset';
+import { PROBLEMS_DATASET } from './dataset';
 
 // Detect Supabase credentials from .env or persistent user configuration
 function resolveSupabaseConfig() {
@@ -418,6 +418,46 @@ export const CloudStorage = {
     return true;
   },
 
+  async listProfiles(): Promise<EmployeeState[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          const allRoles = Object.values(PROBLEMS_DATASET.DEPARTMENT_ROLES).flat() as any[];
+          return data.map((row: any) => {
+            const role = allRoles.find((r: any) => r.title === row.role_title) || allRoles[0];
+            return {
+              fullName: row.full_name,
+              preferredName: row.preferred_name,
+              handle: row.handle,
+              empId: row.emp_id,
+              department: row.department,
+              selectedRole: role,
+              signatureDataUrl: row.signature_url || '',
+              isSigned: Boolean(row.is_signed),
+              currentStep: 5,
+              email: row.email,
+              corporateEmail: row.corporate_email || `${row.handle}@virtualhq.corp`,
+              githubUsername: row.github_username,
+              avatarUrl: row.avatar_url || (row.github_username ? `https://github.com/${row.github_username}.png` : ''),
+              authProvider: row.auth_provider,
+              userId: row.user_id,
+              userType: 'employee',
+              totalXp: row.total_xp || 200
+            };
+          });
+        }
+      } catch (e) {
+        console.error('[Supabase Cloud] Error listing profiles:', e);
+      }
+    }
+    return [];
+  },
+
   async listPullRequests(): Promise<PullRequest[]> {
     if (isSupabaseConfigured) {
       try {
@@ -478,7 +518,7 @@ export const CloudStorage = {
   },
 
   /**
-   * Fetch repositories live from Supabase (or fallback to local dataset)
+   * Fetch repositories live from Supabase (returns [] if none registered)
    */
   async listRepositories(department: string = 'engineering'): Promise<any[]> {
     if (isSupabaseConfigured) {
@@ -489,31 +529,78 @@ export const CloudStorage = {
         }
         const { data, error } = await query.order('name', { ascending: true });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           return data.map(row => ({
             id: row.id,
             repo: row.id,
             name: row.name,
-            owner: row.owner,
-            url: row.url,
+            owner: row.owner || row.id.split('/')[0] || 'VirtualHQ',
+            url: row.url || `https://github.com/${row.id}`,
             desc: row.description || '',
             tags: Array.isArray(row.tags) ? row.tags : [],
-            stars: String(row.stars || '128'),
-            forks: String(row.forks || '45'),
+            stars: String(row.stars || '0'),
+            forks: String(row.forks || '0'),
             language: row.language || 'TypeScript',
             department: row.department || 'engineering',
-            issues: []
+            issues: Array.isArray(row.issues) ? row.issues : []
           }));
         }
       } catch (e) {
         console.error('[Supabase Cloud] Error fetching repositories:', e);
       }
     }
-    return ALL_REPOSITORIES;
+    // Try user-scoped localStorage fallback cache
+    try {
+      const cached = localStorage.getItem('vhq_custom_repos');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (_) {}
+    return [];
   },
 
   /**
-   * Fetch role-wise assigned problems live from Supabase
+   * Register a new repository directly in Supabase
+   */
+  async createRepository(repo: any): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('repositories').upsert({
+          id: repo.id || repo.repo,
+          name: repo.name,
+          owner: repo.owner || repo.repo.split('/')[0] || 'VirtualHQ',
+          url: repo.url,
+          description: repo.desc || repo.description || '',
+          tags: repo.tags || [],
+          stars: Number(repo.stars || 0),
+          forks: Number(repo.forks || 0),
+          language: repo.language || 'TypeScript',
+          department: repo.department || 'engineering',
+          created_at: new Date().toISOString()
+        });
+
+        if (error) {
+          console.warn('[Supabase Cloud] Could not save repository to table (may need table creation):', error.message);
+        } else {
+          return true;
+        }
+      } catch (e) {
+        console.error('[Supabase Cloud] Repo save exception:', e);
+      }
+    }
+
+    // Persist in local storage cache
+    try {
+      const existingStr = localStorage.getItem('vhq_custom_repos');
+      const list = existingStr ? JSON.parse(existingStr) : [];
+      list.push(repo);
+      localStorage.setItem('vhq_custom_repos', JSON.stringify(list));
+    } catch (_) {}
+    return true;
+  },
+
+  /**
+   * Fetch role-wise assigned problems live from Supabase (returns [] if none)
    */
   async listRoleProblems(roleTitle?: string, department: string = 'engineering'): Promise<ProblemIssue[]> {
     if (isSupabaseConfigured) {
@@ -539,17 +626,6 @@ export const CloudStorage = {
         }
       } catch (e) {
         console.error('[Supabase Cloud] Error fetching role problems:', e);
-      }
-    }
-
-    // Fallback to local dataset if cloud is not yet seeded
-    if (roleTitle) {
-      for (const dept of Object.keys(PROBLEMS_DATASET.DEPARTMENT_ROLES)) {
-        const roles = (PROBLEMS_DATASET.DEPARTMENT_ROLES as any)[dept];
-        const match = roles.find((r: any) => r.title.toLowerCase().includes(roleTitle.toLowerCase()));
-        if (match && match.problems) {
-          return match.problems;
-        }
       }
     }
     return [];
@@ -701,5 +777,189 @@ export const CloudStorage = {
         supabase.removeChannel(channel);
       }
     };
+  },
+
+  /**
+   * Real Meetings Service connected to Supabase
+   */
+  async listMeetings(empId: string): Promise<any[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('meetings')
+          .select('*')
+          .eq('emp_id', empId)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          return data;
+        }
+      } catch (_) {}
+    }
+
+    try {
+      const stored = localStorage.getItem(`vhq_meetings_${empId}`);
+      if (stored) return JSON.parse(stored);
+    } catch (_) {}
+
+    return [];
+  },
+
+  async createMeeting(meeting: any): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('meetings').insert({
+          id: meeting.id,
+          emp_id: meeting.empId,
+          title: meeting.title,
+          type: meeting.type || 'standup',
+          platform: meeting.platform || 'google_meet',
+          link: meeting.link,
+          meeting_id: meeting.meetingId || '',
+          passcode: meeting.passcode || '',
+          host_name: meeting.hostName,
+          host_title: meeting.hostTitle || '',
+          host_initials: meeting.hostInitials || '',
+          schedule_time: meeting.scheduleTime,
+          duration: meeting.duration || '30 mins',
+          status: meeting.status || 'upcoming',
+          agenda: meeting.agenda || [],
+          attendees: meeting.attendees || []
+        });
+        if (!error) return true;
+      } catch (_) {}
+    }
+
+    try {
+      const key = `vhq_meetings_${meeting.empId}`;
+      const stored = localStorage.getItem(key);
+      const list = stored ? JSON.parse(stored) : [];
+      list.unshift(meeting);
+      localStorage.setItem(key, JSON.stringify(list));
+    } catch (_) {}
+
+    return true;
+  },
+
+  async deleteMeeting(empId: string, meetingId: string): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('meetings').delete().eq('id', meetingId);
+      } catch (_) {}
+    }
+    try {
+      const key = `vhq_meetings_${empId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const list = JSON.parse(stored).filter((m: any) => m.id !== meetingId);
+        localStorage.setItem(key, JSON.stringify(list));
+      }
+    } catch (_) {}
+    return true;
+  },
+
+  /**
+   * Real Messages Service connected to Supabase
+   */
+  async listMessages(empId: string, threadId: string): Promise<any[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('emp_id', empId)
+          .eq('thread_id', threadId)
+          .order('created_at', { ascending: true });
+
+        if (!error && data) {
+          return data;
+        }
+      } catch (_) {}
+    }
+
+    try {
+      const key = `vhq_messages_${empId}_${threadId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) return JSON.parse(stored);
+    } catch (_) {}
+
+    return [];
+  },
+
+  async sendMessage(empId: string, threadId: string, msg: any): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('messages').insert({
+          id: msg.id,
+          emp_id: empId,
+          thread_id: threadId,
+          sender_name: msg.sender,
+          text: msg.text,
+          is_me: msg.isMe,
+          created_at: new Date().toISOString()
+        });
+        if (!error) return true;
+      } catch (_) {}
+    }
+
+    try {
+      const key = `vhq_messages_${empId}_${threadId}`;
+      const stored = localStorage.getItem(key);
+      const list = stored ? JSON.parse(stored) : [];
+      list.push(msg);
+      localStorage.setItem(key, JSON.stringify(list));
+    } catch (_) {}
+
+    return true;
+  },
+
+  /**
+   * Real Team Community Feed connected to Supabase
+   */
+  async listTeamPosts(): Promise<any[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('team_posts')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          return data;
+        }
+      } catch (_) {}
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_team_posts');
+      if (stored) return JSON.parse(stored);
+    } catch (_) {}
+
+    return [];
+  },
+
+  async createTeamPost(post: any): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('team_posts').insert({
+          id: post.id,
+          author_name: post.name,
+          author_avatar: post.avatar,
+          author_role: post.role || '',
+          content: post.content,
+          reactions: post.reactions || { likes: 0 }
+        });
+        if (!error) return true;
+      } catch (_) {}
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_team_posts');
+      const list = stored ? JSON.parse(stored) : [];
+      list.unshift(post);
+      localStorage.setItem('vhq_team_posts', JSON.stringify(list));
+    } catch (_) {}
+
+    return true;
   }
 };
