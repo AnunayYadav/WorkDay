@@ -89,6 +89,11 @@ h1, h2, h3, h4, h5, h6, p, span, div, label, li, dt, dd {
 }
 
 .mono {
+  font-family: var(--font-premium);
+  font-feature-settings: "tnum" 1, "cv05" 1;
+}
+
+code, pre, .code-font, .code-editor, .terminal-text {
   font-family: var(--font-mono);
 }
 
@@ -3414,30 +3419,34 @@ h1, h2, h3, h4, h5, h6, p, span, div, label, li, dt, dd {
 }
 
 .issue-level-pill {
-  font-size: 0.6rem;
-  font-weight: 600;
-  padding: 0.12rem 0.45rem;
-  border-radius: 980px;
-  letter-spacing: 0.04em;
+  font-family: var(--font-premium);
+  font-size: 0.62rem;
+  font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .issue-level-pill.easy {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .issue-level-pill.medium {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .issue-level-pill.hard {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .issue-code {
@@ -5830,10 +5839,11 @@ h1, h2, h3, h4, h5, h6, p, span, div, label, li, dt, dd {
 }
 
 .ac-check-item .ac-ico {
-  color: #10b981;
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   margin-top: 1px;
+  opacity: 0.9;
 }
 
 .hero-task-actions-row {
@@ -6056,12 +6066,12 @@ h1, h2, h3, h4, h5, h6, p, span, div, label, li, dt, dd {
 }
 
 .scratch-status {
-  font-family: var(--font-mono);
+  font-family: var(--font-premium);
   font-size: 0.62rem;
   font-weight: 600;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   letter-spacing: 0.06em;

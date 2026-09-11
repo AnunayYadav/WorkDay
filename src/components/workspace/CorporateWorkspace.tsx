@@ -395,7 +395,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
             </div>
             <div className="user-id-info">
               <span className="user-full-name" id="sideUserName">{employee.fullName}</span>
-              <span className="user-role-label mono" style={{ fontSize: '0.68rem', color: '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={employee.corporateEmail || `${employee.handle}@virtualhq.corp`}>
+              <span className="user-role-label" style={{ fontSize: '0.72rem', color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={employee.corporateEmail || `${employee.handle}@virtualhq.corp`}>
                 {employee.corporateEmail || `${employee.handle}@virtualhq.corp`}
               </span>
             </div>
@@ -436,23 +436,23 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
 
           <div className="stage-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             {employee.corporateEmail && (
-              <span className="mono" style={{ fontSize: '0.68rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.08)', padding: '0.2rem 0.55rem', borderRadius: '6px', border: '1px solid rgba(56, 189, 248, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} title={`Allotted Enterprise Identity: ${employee.corporateEmail}`}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#38bdf8' }}></span>
+              <span style={{ fontSize: '0.72rem', color: '#e4e4e7', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 500 }} title={`Allotted Enterprise Identity: ${employee.corporateEmail}`}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a1a1aa' }}></span>
                 {employee.corporateEmail}
               </span>
             )}
             {employee.githubUsername && (
-              <span className="mono" style={{ fontSize: '0.65rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+              <span style={{ fontSize: '0.72rem', color: '#e4e4e7', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 500 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a1a1aa' }}></span>
                 @{employee.githubUsername}
               </span>
             )}
             {employee.userType === 'manager' && (
-              <span className="mono" style={{ fontSize: '0.65rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+              <span style={{ fontSize: '0.72rem', color: '#ffffff', background: 'rgba(255, 255, 255, 0.08)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.14)', fontWeight: 600 }}>
                 👔 Lead Reviewer Mode
               </span>
             )}
-            <div className="corporate-clock mono">
+            <div className="corporate-clock" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.8rem' }}>
               <span className="c-time" id="stageLiveClock">{liveTime}</span>
             </div>
           </div>

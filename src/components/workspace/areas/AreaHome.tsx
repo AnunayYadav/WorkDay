@@ -140,20 +140,20 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
       {/* Real Sprint Telemetry Strip */}
       <div className="sprint-telemetry-strip">
         <div className="telemetry-box">
-          <span className="t-label mono">ASSIGNED DELIVERABLES</span>
-          <span className="t-val mono" id="homeMetricAssigned">{activeTask ? '1 Active' : '0 Active'}</span>
+          <span className="t-label">ASSIGNED DELIVERABLES</span>
+          <span className="t-val" id="homeMetricAssigned">{activeTask ? '1 Active' : '0 Active'}</span>
         </div>
         <div className="telemetry-box">
-          <span className="t-label mono">COMPLETED &amp; MERGED</span>
-          <span className="t-val mono" id="homeMetricCompleted">{completedCount} Solved</span>
+          <span className="t-label">COMPLETED &amp; MERGED</span>
+          <span className="t-val" id="homeMetricCompleted">{completedCount} Solved</span>
         </div>
         <div className="telemetry-box">
-          <span className="t-label mono">EARNED SPRINT XP</span>
-          <span className="t-val mono" id="homeMetricXp">{totalXp} XP</span>
+          <span className="t-label">EARNED SPRINT XP</span>
+          <span className="t-val" id="homeMetricXp">{totalXp} XP</span>
         </div>
         <div className="telemetry-box">
-          <span className="t-label mono">PIPELINE INTEGRITY</span>
-          <span className="t-val mono" style={{ color: '#22c55e' }}>100% CI Green</span>
+          <span className="t-label">PIPELINE INTEGRITY</span>
+          <span className="t-val" style={{ color: '#ffffff' }}>100% CI Passing</span>
         </div>
       </div>
 
