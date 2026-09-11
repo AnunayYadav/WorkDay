@@ -11,78 +11,272 @@ import { PROBLEMS_DATASET } from './lib/dataset';
 
 function AppContent() {
   const { showToast } = useToast();
-  const [employee, setEmployee] = useState<EmployeeState | null>(null);
-  const [currentView, setCurrentView] = useState<'landing' | 'workspace'>('landing');
+
+  // Instant local cache hydration to prevent visual flicker or unwanted onboarding trigger on refresh
+  const [employee, setEmployee] = useState<EmployeeState | null>(() => {
+    try {
+      const cached = localStorage.getItem('vhq_active_emp');
+      if (cached) return JSON.parse(cached);
+    } catch (_) {}
+    return null;
+  });
+
+  const [currentView, setCurrentView] = useState<'landing' | 'workspace'>(() => {
+    try {
+      const cached = localStorage.getItem('vhq_active_emp');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.isSigned) return 'workspace';
+      }
+    } catch (_) {}
+    return 'landing';
+  });
+
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingOnboardAfterAuth, setPendingOnboardAfterAuth] = useState(false);
   const [activeStudioIssue, setActiveStudioIssue] = useState<ProblemIssue | null>(null);
 
-  // Load employee profile on startup
+  // Load employee profile on startup and auto-navigate only if real active Supabase session exists
   useEffect(() => {
-    CloudStorage.getEmployee().then(saved => {
-      if (saved) {
-        setEmployee(saved);
-      }
-    });
+    let isMounted = true;
 
-    // Listen to Supabase Auth State changes (e.g. GitHub OAuth callback)
-    const authListener = AuthService.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
+    const initAuth = async () => {
+      try {
+        const session = await AuthService.getSession();
+        if (!session?.user) {
+          // Unauthenticated: only reset views, do not prematurely wipe localStorage in case session is hydrating
+          if (isMounted) {
+            setEmployee(null);
+            setCurrentView('landing');
+            setIsOnboardingOpen(false);
+          }
+          return;
+        }
+
+        // Live Supabase user session exists: query Supabase profiles
         const user = session.user;
-        const meta = user.user_metadata || {};
-        const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'VirtualHQ Engineer';
-        const defaultRole = PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0];
+        let saved = await CloudStorage.getEmployee();
 
-        const oauthEmp: EmployeeState = {
+        // Check localStorage cache: if user completed onboarding, prioritize isSigned: true
+        try {
+          const cachedStr = localStorage.getItem('vhq_active_emp');
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr) as EmployeeState;
+            if (cached && (cached.userId === user.id || cached.email === user.email || !cached.userId)) {
+              if (cached.isSigned) {
+                saved = {
+                  ...(saved || {}),
+                  ...cached,
+                  isSigned: true,
+                  userId: user.id
+                };
+                // Background sync to ensure Supabase database matches
+                CloudStorage.saveEmployee(saved).catch(() => {});
+              }
+            }
+          }
+        } catch (_) {}
+
+        if (!isMounted) return;
+
+        if (saved && saved.isSigned) {
+          setEmployee(saved);
+          setCurrentView('workspace');
+          setIsOnboardingOpen(false);
+        } else if (saved && !saved.isSigned) {
+          setEmployee(saved);
+          setCurrentView('landing');
+          setIsOnboardingOpen(true);
+        } else {
+          // Fresh profile needed for authenticated user
+          const meta = user.user_metadata || {};
+          const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'Engineering Recruit';
+          const cleanGh = (meta.github_username || meta.user_name || user.email?.split('@')[0] || 'engineer').toLowerCase();
+          const baseEmp: EmployeeState = {
+            fullName,
+            preferredName: fullName.split(' ')[0],
+            handle: cleanGh,
+            empId: `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
+            department: 'engineering',
+            selectedRole: PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0],
+            signatureDataUrl: '',
+            isSigned: false,
+            currentStep: 1,
+            email: user.email,
+            corporateEmail: `${cleanGh}@virtualhq.corp`,
+            githubUsername: cleanGh,
+            avatarUrl: meta.avatar_url || `https://github.com/${cleanGh}.png`,
+            authProvider: (user.app_metadata?.provider as any) || 'email',
+            userId: user.id,
+            userType: 'employee',
+            totalXp: 200
+          };
+          setEmployee(baseEmp);
+          setCurrentView('landing');
+          setIsOnboardingOpen(true);
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      }
+    };
+
+    initAuth();
+
+    // Listen to Supabase Auth State changes (login, logout, token refresh)
+    const authListener = AuthService.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      // Ignore INITIAL_SESSION and TOKEN_REFRESHED to prevent racing with initAuth on page refresh
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        return;
+      }
+
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        await CloudStorage.clearEmployee();
+        setEmployee(null);
+        setCurrentView('landing');
+        setIsOnboardingOpen(false);
+        setIsAuthModalOpen(false);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        const user = session.user;
+        let existing = await CloudStorage.getEmployee();
+
+        // Check localStorage cache: never kick an already-onboarded user back to onboarding!
+        try {
+          const cachedStr = localStorage.getItem('vhq_active_emp');
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr) as EmployeeState;
+            if (cached && (cached.userId === user.id || cached.email === user.email || !cached.userId)) {
+              if (cached.isSigned) {
+                existing = {
+                  ...(existing || {}),
+                  ...cached,
+                  isSigned: true,
+                  userId: user.id
+                };
+                CloudStorage.saveEmployee(existing).catch(() => {});
+              }
+            }
+          }
+        } catch (_) {}
+
+        if (existing && existing.isSigned) {
+          setEmployee(existing);
+          setIsAuthModalOpen(false);
+          setIsOnboardingOpen(false);
+          setCurrentView('workspace');
+          return;
+        }
+
+        const meta = user.user_metadata || {};
+        const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'Engineering Recruit';
+        const cleanGh = (meta.github_username || meta.user_name || user.email?.split('@')[0] || 'engineer').toLowerCase();
+        const baseEmp: EmployeeState = existing || {
           fullName,
           preferredName: fullName.split(' ')[0],
-          handle: (meta.user_name || meta.preferred_username || user.email?.split('@')[0] || 'engineer').toLowerCase(),
+          handle: cleanGh,
           empId: `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
           department: 'engineering',
-          selectedRole: defaultRole,
+          selectedRole: PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0],
           signatureDataUrl: '',
-          isSigned: true,
-          currentStep: 4,
+          isSigned: false,
+          currentStep: 1,
           email: user.email,
-          avatarUrl: meta.avatar_url,
-          authProvider: 'github',
+          corporateEmail: `${cleanGh}@virtualhq.corp`,
+          githubUsername: cleanGh,
+          avatarUrl: meta.avatar_url || `https://github.com/${cleanGh}.png`,
+          authProvider: (user.app_metadata?.provider as any) || 'email',
           userId: user.id,
-          userType: 'employee'
+          userType: 'employee',
+          totalXp: 200
         };
 
-        setEmployee(oauthEmp);
-        await CloudStorage.saveEmployee(oauthEmp);
-        setCurrentView('workspace');
-        showToast({
-          title: 'GitHub SSO Verified',
-          message: `Authenticated as ${oauthEmp.fullName} (${oauthEmp.empId}).`,
-          type: 'success'
-        });
+        setEmployee(baseEmp);
+        setIsAuthModalOpen(false);
+        if (baseEmp.isSigned) {
+          setCurrentView('workspace');
+          setIsOnboardingOpen(false);
+        } else {
+          setIsOnboardingOpen(true);
+        }
       }
     });
 
     return () => {
+      isMounted = false;
       authListener?.data?.subscription?.unsubscribe();
     };
   }, []);
 
+  // When user clicks "Get Started" / "Start Onboarding" on landing page
+  const handleStartOnboarding = () => {
+    if (employee && employee.isSigned) {
+      setCurrentView('workspace');
+      return;
+    }
+
+    if (employee && !employee.isSigned) {
+      setIsOnboardingOpen(true);
+      return;
+    }
+
+    // Must authenticate first
+    setPendingOnboardAfterAuth(true);
+    setIsAuthModalOpen(true);
+    showToast({
+      title: 'Authentication Required',
+      message: 'Please sign in or create an account to begin official corporate onboarding.',
+      type: 'info'
+    });
+  };
+
   const handleCompleteOnboarding = async (newEmp: EmployeeState) => {
-    setEmployee(newEmp);
-    await CloudStorage.saveEmployee(newEmp);
+    const session = await AuthService.getSession();
+    const resolvedEmp: EmployeeState = {
+      ...newEmp,
+      userId: newEmp.userId || session?.user?.id,
+      email: newEmp.email || session?.user?.email,
+      isSigned: true,
+      currentStep: 5
+    };
+
+    setEmployee(resolvedEmp);
     setIsOnboardingOpen(false);
     setCurrentView('workspace');
+    await CloudStorage.saveEmployee(resolvedEmp);
+
     showToast({
       title: 'Welcome to VirtualHQ!',
-      message: `Credentials issued for ${newEmp.fullName} (${newEmp.empId}).`,
+      message: `Credentials issued for ${resolvedEmp.fullName} (${resolvedEmp.empId}).`,
       type: 'success'
     });
   };
 
   const handleAuthenticated = async (authEmp: EmployeeState) => {
     setEmployee(authEmp);
-    await CloudStorage.saveEmployee(authEmp);
     setIsAuthModalOpen(false);
-    setCurrentView('workspace');
+
+    if (pendingOnboardAfterAuth || !authEmp.isSigned) {
+      setPendingOnboardAfterAuth(false);
+      setIsOnboardingOpen(true);
+      showToast({
+        title: 'Authentication Successful',
+        message: `Welcome, ${authEmp.fullName}! Proceed to complete your role onboarding.`,
+        type: 'success'
+      });
+    } else {
+      await CloudStorage.saveEmployee(authEmp);
+      setCurrentView('workspace');
+      showToast({
+        title: 'Welcome Back',
+        message: `Signed in as ${authEmp.fullName}.`,
+        type: 'success'
+      });
+    }
   };
 
   const handleOpenStudio = (issue: ProblemIssue) => {
@@ -102,8 +296,11 @@ function AppContent() {
       {/* 1. Landing View */}
       {currentView === 'landing' && (
         <LandingView
-          onOpenOnboard={() => setIsOnboardingOpen(true)}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenOnboard={handleStartOnboarding}
+          onOpenAuth={() => {
+            setPendingOnboardAfterAuth(false);
+            setIsAuthModalOpen(true);
+          }}
         />
       )}
 
@@ -144,8 +341,12 @@ function AppContent() {
       {/* Enterprise SSO / GitHub Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingOnboardAfterAuth(false);
+        }}
         onAuthenticated={handleAuthenticated}
+        isForOnboarding={pendingOnboardAfterAuth}
       />
     </>
   );

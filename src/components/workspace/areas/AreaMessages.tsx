@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { EmployeeState } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaMessagesProps {
   employee: EmployeeState;
@@ -11,212 +12,286 @@ interface MessageItem {
   isMe: boolean;
   text: string;
   time: string;
+  empId?: string;
+  threadId?: string;
 }
 
 export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
-  const [activeThread, setActiveThread] = useState<'marcus' | 'devon' | 'sarah' | 'eng'>('marcus');
+  const mgr = employee.selectedRole?.manager || {
+    name: 'Marcus Vance',
+    title: 'Engineering Director',
+    initials: 'MV'
+  };
+
+  const [colleagues, setColleagues] = useState<EmployeeState[]>([]);
+  const [activeThread, setActiveThread] = useState<string>('#general');
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [inputVal, setInputVal] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [threads, setThreads] = useState<Record<string, MessageItem[]>>({
-    marcus: [
-      {
-        id: 'm1',
-        sender: employee.selectedRole?.manager?.name || 'Marcus Vance',
-        isMe: false,
-        text: `Welcome to the engineering squad, ${employee.preferredName}! Take your time reviewing ticket on your desk. Make sure all unit tests pass before opening the pull request.`,
-        time: '10:12 AM'
-      },
-      {
-        id: 'm2',
-        sender: employee.fullName,
-        isMe: true,
-        text: 'Thanks! I am working on the solution patch right now and running the unit test suite.',
-        time: '10:14 AM'
-      },
-      {
-        id: 'm3',
-        sender: employee.selectedRole?.manager?.name || 'Marcus Vance',
-        isMe: false,
-        text: 'Sounds good. Ping me here or during our 2:30 PM 1-on-1 if you hit any roadbumps.',
-        time: '10:16 AM'
-      }
-    ],
-    devon: [
-      {
-        id: 'd1',
-        sender: 'Devon Reed',
-        isMe: false,
-        text: 'Hey Alex! If you need any help with the shared component styling or theme tokens, let me know.',
-        time: '09:45 AM'
-      }
-    ],
-    sarah: [
-      {
-        id: 's1',
-        sender: 'Sarah Chen',
-        isMe: false,
-        text: 'Welcome aboard! Our Figma design system specs are linked in the Company portal if you want to inspect tokens.',
-        time: '09:50 AM'
-      }
-    ],
-    eng: [
-      {
-        id: 'e1',
-        sender: 'Engineering Bot',
-        isMe: false,
-        text: 'Sprint 01 kickoff completed. All 16 production repositories verified and CI runners are online.',
-        time: '09:00 AM'
-      }
-    ]
-  });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-  const handleSend = (e: React.FormEvent) => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  useEffect(() => {
+    let isMounted = true;
+    CloudStorage.listProfiles(employee.companyName || 'Stripe').then(profiles => {
+      if (isMounted) {
+        const others = profiles.filter(p => p.empId !== employee.empId && p.fullName);
+        setColleagues(others);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [employee.empId, employee.companyName]);
+
+  // Build canonical channel & direct directory
+  const channels = [
+    { id: '#general', name: '#general', role: 'All-Hands & Squad Chat', initials: '#', isChannel: true },
+    { id: '#engineering', name: '#engineering', role: 'Architecture & Deployments', initials: 'EN', isChannel: true },
+    { id: '#announcements', name: '#announcements', role: 'Executive Announcements', initials: '📢', isChannel: true },
+    { id: `mgr-${mgr.name.toLowerCase().replace(/\s+/g, '_')}`, name: `${mgr.name} (Manager)`, role: mgr.title, initials: mgr.initials, isChannel: false, isManager: true },
+    ...colleagues.map((c) => ({
+      id: c.empId,
+      name: c.fullName,
+      role: `${c.userType === 'manager' ? '👔 Manager · ' : c.userType === 'hr' ? '🤝 HR · ' : ''}${c.selectedRole?.title || 'Engineer'}`,
+      initials: c.preferredName ? c.preferredName.slice(0, 2).toUpperCase() : 'EM',
+      isChannel: false,
+      isManager: c.userType === 'manager'
+    }))
+  ];
+
+  const activeChannel = channels.find(c => c.id === activeThread) || channels[0];
+
+  const loadMessages = async (threadId: string) => {
+    setLoading(true);
+    try {
+      const data = await CloudStorage.listMessages(employee.empId, threadId);
+      setMessages(data || []);
+    } catch (err) {
+      console.error('Error loading messages:', err);
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMessages(activeThread);
+
+    // Subscribe to realtime messages on this thread
+    const unsubscribe = CloudStorage.subscribeToMessages(employee.empId, activeThread, (incomingMsg) => {
+      setMessages(prev => {
+        if (prev.some(m => m.id === incomingMsg.id)) return prev;
+        return [...prev, incomingMsg];
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeThread, employee.empId]);
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
 
+    const textToSend = inputVal.trim();
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: MessageItem = {
-      id: String(Date.now()),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}`,
       sender: employee.fullName,
       isMe: true,
-      text: inputVal.trim(),
-      time: timeStr
+      text: textToSend,
+      time: timeStr,
+      empId: employee.empId,
+      threadId: activeThread
     };
 
-    setThreads(prev => ({
-      ...prev,
-      [activeThread]: [...(prev[activeThread] || []), userMsg]
-    }));
-
+    setMessages(prev => [...prev, userMsg]);
     setInputVal('');
 
-    // Auto-reply
-    setTimeout(() => {
-      let replyText = `Got it, ${employee.preferredName}. Keep up the great velocity.`;
-      if (activeThread === 'marcus') {
-        replyText = `Understood. Make sure to commit the solution patch and run specs in Monaco Studio.`;
-      } else if (activeThread === 'devon') {
-        replyText = `Nice! Let me know once you submit the PR and I can also take a look at the diff.`;
-      } else if (activeThread === 'sarah') {
-        replyText = `Awesome, thanks for the update!`;
-      }
+    await CloudStorage.sendMessage(employee.empId, activeThread, userMsg);
 
-      const botReply: MessageItem = {
-        id: String(Date.now() + 1),
-        sender: activeThread === 'marcus' ? (employee.selectedRole?.manager?.name || 'Marcus Vance') : (activeThread === 'devon' ? 'Devon Reed' : 'Sarah Chen'),
-        isMe: false,
-        text: replyText,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setThreads(prev => ({
-        ...prev,
-        [activeThread]: [...(prev[activeThread] || []), botReply]
-      }));
-    }, 1000);
+    // If messaging simulated manager thread, trigger intelligent automated acknowledgment
+    if (activeChannel.isManager && activeChannel.id.startsWith('mgr-')) {
+      setIsTyping(true);
+      setTimeout(async () => {
+        setIsTyping(false);
+        const replyText = `Thanks for the update, ${employee.preferredName}. Keep pushing your deliverables in ${employee.companyName || 'the current sprint'} and feel free to ping me if you need architecture unblocking.`;
+        const replyMsg: MessageItem = {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now() + 1}`,
+          sender: mgr.name,
+          isMe: false,
+          text: replyText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          empId: 'system-manager',
+          threadId: activeThread
+        };
+        setMessages(prev => [...prev, replyMsg]);
+        await CloudStorage.sendMessage(employee.empId, activeThread, replyMsg);
+      }, 1200);
+    }
   };
-
-  const contactDetails: Record<string, { name: string; role: string }> = {
-    marcus: { name: employee.selectedRole?.manager?.name || 'Marcus Vance', role: 'Engineering Director · Direct Manager' },
-    devon: { name: 'Devon Reed', role: 'Staff Frontend · Squad Teammate' },
-    sarah: { name: 'Sarah Chen', role: 'UI/UX Engineer · Squad Teammate' },
-    eng: { name: '#engineering-core', role: 'Organization Announcements & Sprint Updates' }
-  };
-
-  const currentContact = contactDetails[activeThread];
 
   return (
     <section className="workspace-area active" id="areaMessages">
       <div className="area-header">
-        <h1 className="area-title">Messages</h1>
-        <p className="area-subtitle">Internal channels and direct messaging.</p>
-      </div>
-
-      <div className="messages-shell">
-        {/* Left Pane: Channels & People */}
-        <div className="msg-channels-pane">
-          <div className="msg-pane-header">CHANNELS &amp; DIRECT</div>
-          <div className="msg-channel-list">
-            <button
-              type="button"
-              className={`msg-channel-btn ${activeThread === 'marcus' ? 'active' : ''}`}
-              onClick={() => setActiveThread('marcus')}
-            >
-              <div className="msg-avatar-sm">{employee.selectedRole?.manager?.initials || 'MV'}</div>
-              <div className="msg-channel-meta">
-                <span className="c-name">{employee.selectedRole?.manager?.name || 'Marcus Vance'}</span>
-                <span className="c-sub">Engineering Director</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`msg-channel-btn ${activeThread === 'devon' ? 'active' : ''}`}
-              onClick={() => setActiveThread('devon')}
-            >
-              <div className="msg-avatar-sm">DR</div>
-              <div className="msg-channel-meta">
-                <span className="c-name">Devon Reed</span>
-                <span className="c-sub">Staff Frontend</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`msg-channel-btn ${activeThread === 'sarah' ? 'active' : ''}`}
-              onClick={() => setActiveThread('sarah')}
-            >
-              <div className="msg-avatar-sm">SC</div>
-              <div className="msg-channel-meta">
-                <span className="c-name">Sarah Chen</span>
-                <span className="c-sub">UI/UX Engineer</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`msg-channel-btn ${activeThread === 'eng' ? 'active' : ''}`}
-              onClick={() => setActiveThread('eng')}
-            >
-              <div className="msg-avatar-sm">#</div>
-              <div className="msg-channel-meta">
-                <span className="c-name">#engineering-core</span>
-                <span className="c-sub">Announcements</span>
-              </div>
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 className="area-title">Realtime Messages &amp; Squad Channels</h1>
+            <p className="area-subtitle">
+              Synchronized team communications across {employee.companyName || 'organization'} channels and private 1-on-1s.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.25rem 0.6rem',
+              background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid rgba(34, 197, 94, 0.25)',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              color: '#4ade80',
+              fontWeight: 500
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }}></span>
+              Supabase Realtime Active
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Right Pane: Active Conversation */}
-        <div className="msg-chat-pane">
-          <div className="chat-top-header">
-            <div className="chat-contact-info">
-              <span className="contact-name" id="chatContactName">{currentContact.name}</span>
-              <span className="contact-role" id="chatContactRole">{currentContact.role}</span>
-            </div>
+      <div className="messages-layout">
+        {/* Left Threads Directory */}
+        <div className="messages-sidebar executive-card">
+          <div className="card-kicker-row">
+            <span className="card-kicker">CHANNELS &amp; DIRECTS</span>
+            <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a' }}>{channels.length}</span>
           </div>
 
-          {/* Message Stream */}
-          <div className="chat-stream-scroll" id="messagesChatStream">
-            {(threads[activeThread] || []).map(msg => (
-              <div key={msg.id} className={`chat-bubble ${msg.isMe ? 'user' : 'manager'}`}>
-                <div className="bubble-body">{msg.text}</div>
-                <span className="bubble-time">{msg.time}</span>
+          <div className="threads-list">
+            {channels.map((ch) => (
+              <div
+                key={ch.id}
+                className={`thread-item ${activeThread === ch.id ? 'active' : ''}`}
+                onClick={() => setActiveThread(ch.id)}
+              >
+                <div className={`t-avatar mono ${ch.isChannel ? 'channel-avatar' : ''}`}>
+                  {ch.initials}
+                </div>
+                <div className="t-info">
+                  <div className="t-name-row">
+                    <span className="t-name">{ch.name}</span>
+                  </div>
+                  <span className="t-preview">{ch.role}</span>
+                </div>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Right Active Conversation Pane */}
+        <div className="conversation-pane executive-card">
+          {/* Header */}
+          <div className="conv-header">
+            <div className={`conv-avatar mono ${activeChannel.isChannel ? 'channel-avatar' : ''}`}>
+              {activeChannel.initials}
+            </div>
+            <div className="conv-meta">
+              <span className="conv-name">{activeChannel.name}</span>
+              <span className="conv-role">{activeChannel.role}</span>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <span className="mono" style={{ fontSize: '0.72rem', color: '#71717a' }}>
+                {activeChannel.isChannel ? 'PUBLIC CHANNEL' : 'ENCRYPTED 1-ON-1'}
+              </span>
+            </div>
+          </div>
+
+          {/* Messages Body */}
+          <div className="conv-body">
+            {loading && (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#71717a', fontSize: '0.85rem' }}>
+                Connecting to live thread...
+              </div>
+            )}
+
+            {!loading && messages.length === 0 && (
+              <div style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1rem auto',
+                  color: '#a1a1aa'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
+                  No Messages in {activeChannel.name}
+                </h4>
+                <p style={{ fontSize: '0.8rem', color: '#71717a', maxWidth: '340px', margin: '0 auto' }}>
+                  Start the realtime conversation regarding tickets, architecture, or deliverables.
+                </p>
+              </div>
+            )}
+
+            {!loading && messages.length > 0 && (
+              <div className="messages-stream">
+                {messages.map((m) => {
+                  const isMe = m.empId ? m.empId === employee.empId : m.isMe;
+                  return (
+                    <div key={m.id} className={`msg-bubble ${isMe ? 'msg-me' : 'msg-them'}`}>
+                      <div className="msg-author-row">
+                        <span className="msg-sender">{isMe ? 'You' : m.sender}</span>
+                        <span className="msg-time mono">{m.time}</span>
+                      </div>
+                      <div className="msg-content">{m.text}</div>
+                    </div>
+                  );
+                })}
+
+                {isTyping && (
+                  <div className="msg-bubble msg-them" style={{ opacity: 0.7 }}>
+                    <div className="msg-author-row">
+                      <span className="msg-sender">{mgr.name}</span>
+                      <span className="msg-time mono">typing...</span>
+                    </div>
+                    <div className="msg-content" style={{ fontStyle: 'italic', color: '#a1a1aa' }}>
+                      Writing a reply...
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
 
           {/* Chat Input Bar */}
-          <form onSubmit={handleSend} className="chat-input-bar">
+          <form className="conv-input-bar" onSubmit={handleSend}>
             <input
               type="text"
-              className="chat-input"
-              id="chatInputMsg"
+              className="conv-input"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder="Send a message..."
+              placeholder={`Message ${activeChannel.name}...`}
             />
-            <button type="submit" className="btn-send-chat" id="btnSendMsg">
+            <button type="submit" className="btn-send-msg" disabled={!inputVal.trim()}>
               Send →
             </button>
           </form>

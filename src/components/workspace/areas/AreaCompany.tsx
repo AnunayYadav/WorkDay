@@ -1,403 +1,365 @@
-import React from 'react';
-import type { EmployeeState } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import type { EmployeeState, Company } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaCompanyProps {
   employee?: EmployeeState;
 }
 
 export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
-  const userName = employee?.fullName || 'Alex Morgan';
-  const userInitials = employee?.preferredName?.slice(0, 2).toUpperCase() || 'AM';
-  const roleTitle = employee?.selectedRole?.title || 'Junior Frontend Developer';
+  const [company, setCompany] = useState<Company | null>(null);
+  const [companyEmployees, setCompanyEmployees] = useState<EmployeeState[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const empCompanyName = employee?.companyName || 'Stripe';
+  const empCompanyDomain = employee?.companyDomain || 'stripe.corp';
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([
+      CloudStorage.getCompany(empCompanyName || empCompanyDomain),
+      CloudStorage.listProfiles()
+    ]).then(([comp, profiles]) => {
+      if (!isMounted) return;
+
+      if (comp) {
+        setCompany(comp);
+      } else {
+        // Construct standard company fallback if not found in db
+        setCompany({
+          id: empCompanyName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          name: empCompanyName,
+          domain: empCompanyDomain,
+          tagline: `${empCompanyName} Enterprise Engineering & Infrastructure`,
+          description: `${empCompanyName} builds industry-leading platforms and open-source infrastructure for developers worldwide.`,
+          headquarters: 'San Francisco, CA',
+          founded: '2015',
+          metrics: {
+            headcount: '5,000+',
+            valuation: 'Enterprise Leader',
+            uptime: '99.99%',
+            compliance: 'SOC 2 Type II · ISO 27001'
+          },
+          leadership: [
+            { name: employee?.selectedRole?.manager?.name || 'Marcus Vance', role: 'VP of Engineering', dept: 'ENGINEERING', initials: 'MV' },
+            { name: 'Elena Rostova', role: 'Chief Executive Officer', dept: 'EXECUTIVE', initials: 'ER' },
+            { name: 'David Park', role: 'Chief Technology Officer', dept: 'TECHNOLOGY', initials: 'DP' }
+          ],
+          benefits: [
+            { title: 'Global Healthcare & Wellness', desc: '100% employer-sponsored health, dental, and vision coverage.', tier: 'HEALTH' },
+            { title: 'Home Office & Equipment', desc: 'Top-tier workstation allowance plus continuous monthly broadband stipend.', tier: 'STIPEND' },
+            { title: 'Continuous Learning Grant', desc: '$2,500 annual budget for conferences, courses, and certifications.', tier: 'GROWTH' }
+          ],
+          techStack: ['TypeScript', 'React', 'Node.js', 'Go', 'PostgreSQL', 'Docker', 'AWS']
+        });
+      }
+
+      // Filter colleagues from same company
+      const sameCompany = profiles.filter(p => 
+        p.companyName?.toLowerCase() === empCompanyName.toLowerCase() ||
+        p.companyDomain?.toLowerCase() === empCompanyDomain.toLowerCase()
+      );
+      setCompanyEmployees(sameCompany.length > 0 ? sameCompany : profiles);
+      setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [empCompanyName, empCompanyDomain]);
+
+  const userName = employee?.fullName || 'Engineering Recruit';
+  const roleTitle = employee?.selectedRole?.title || 'Engineer';
+  const deptName = (employee?.department ? employee.department.charAt(0).toUpperCase() + employee.department.slice(1) : 'Engineering') + ' Division';
+  const mgrName = employee?.selectedRole?.manager?.name || 'Executive Director';
+  const empIdStr = employee?.empId || 'WD-1001';
+
+  if (loading && !company) {
+    return (
+      <section className="workspace-area active" id="areaCompany">
+        <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717a' }}>
+          <div className="pulse-indicator" style={{ margin: '0 auto 1rem' }}></div>
+          Loading corporate directory &amp; repository...
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="workspace-area active" id="areaCompany">
-          <div className="area-header">
-            <h1 className="area-title">Company Portal &amp; Directory</h1>
-            <p className="area-subtitle">VirtualHQ Technologies Inc. corporate overview, executive leadership, official employment records, enterprise benefits, and single sign-on system access.</p>
+      {/* Area Header */}
+      <div className="area-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+              <span className="mono" style={{
+                padding: '0.2rem 0.5rem',
+                fontSize: '0.7rem',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '4px',
+                color: '#e4e4e7',
+                letterSpacing: '0.05em'
+              }}>
+                WORKDAY CORPORATE REPOSITORY
+              </span>
+              <span style={{ fontSize: '0.8rem', color: '#71717a' }}>•</span>
+              <span style={{ fontSize: '0.8rem', color: '#a1a1aa' }}>Verified Cloud Tenant</span>
+            </div>
+            <h1 className="area-title">{company?.name || empCompanyName} Portal &amp; Directory</h1>
+            <p className="area-subtitle">
+              Corporate overview, executive leadership, verified digital employment contract deed, and organization directory.
+            </p>
           </div>
+        </div>
+      </div>
 
-          {/* Enterprise Company Overview Banner */}
-          <div className="company-overview-banner">
-            <div className="comp-header-row">
-              <div className="comp-title-block">
-                <div className="comp-logo-box">VH</div>
+      {/* Enterprise Company Overview Banner */}
+      <div className="company-overview-banner">
+        <div className="comp-header-row">
+          <div className="comp-title-block">
+            <div className="comp-logo-box">
+              {(company?.name || empCompanyName).slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="comp-name-title">{company?.name || empCompanyName}</h2>
+              <p className="comp-tagline">{company?.tagline || 'Enterprise Technology Organization'}</p>
+            </div>
+          </div>
+          <div className="comp-headquarters-pill mono">
+            📍 {company?.headquarters || 'San Francisco, CA'} · Founded {company?.founded || '2015'}
+          </div>
+        </div>
+
+        {/* Key Corporate Metrics */}
+        <div className="comp-metrics-grid">
+          <div className="comp-metric-item">
+            <span className="comp-m-val mono">{company?.metrics?.headcount || `${companyEmployees.length}+`}</span>
+            <span className="comp-m-label">Global Headcount</span>
+            <span className="comp-m-sub mono">Registered in Supabase Directory</span>
+          </div>
+          <div className="comp-metric-item">
+            <span className="comp-m-val mono">{company?.metrics?.valuation || 'Series B'}</span>
+            <span className="comp-m-label">Enterprise Capitalization</span>
+            <span className="comp-m-sub mono">Verified Market Tier</span>
+          </div>
+          <div className="comp-metric-item">
+            <span className="comp-m-val mono">{company?.metrics?.uptime || '99.99%'}</span>
+            <span className="comp-m-label">Production SLA</span>
+            <span className="comp-m-sub mono">Global Edge Latency &lt; 25ms</span>
+          </div>
+          <div className="comp-metric-item">
+            <span className="comp-m-val mono">{company?.metrics?.compliance || 'SOC 2'}</span>
+            <span className="comp-m-label">Compliance &amp; Security</span>
+            <span className="comp-m-sub mono">Audit Certified</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 1: Executive Leadership & Corporate Hierarchy */}
+      <div className="company-section">
+        <div className="section-kicker-row">
+          <span className="card-kicker">EXECUTIVE LEADERSHIP &amp; SQUAD HEADS</span>
+          <span className="roadmap-note mono">OFFICE OF THE CEO &amp; OPERATING COMMITTEE</span>
+        </div>
+
+        <div className="leadership-grid">
+          {(company?.leadership && company.leadership.length > 0 ? company.leadership : [
+            { name: mgrName, role: 'VP of Engineering', dept: 'ENGINEERING', initials: 'MV' },
+            { name: 'Elena Rostova', role: 'Chief Executive Officer', dept: 'EXECUTIVE', initials: 'ER' },
+            { name: 'David Park', role: 'Chief Financial Officer', dept: 'FINANCE', initials: 'DP' }
+          ]).map((leader, idx) => (
+            <div key={idx} className="exec-leader-card">
+              <div className="exec-avatar">{leader.initials || leader.name.slice(0, 2).toUpperCase()}</div>
+              <div className="exec-meta">
+                <span className="exec-name">{leader.name}</span>
+                <span className="exec-role">{leader.role}</span>
+                <span className="exec-dept mono">{leader.dept}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 2: Technology Stack & Core Competencies */}
+      {company?.techStack && company.techStack.length > 0 && (
+        <div className="company-section">
+          <div className="section-kicker-row">
+            <span className="card-kicker">PRIMARY TECHNOLOGY STACK &amp; FRAMEWORKS</span>
+            <span className="roadmap-note mono">VERIFIED PRODUCTION RUNTIME</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+            {company.techStack.map((tech) => (
+              <span
+                key={tech}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '6px',
+                  color: '#e4e4e7',
+                  fontSize: '0.82rem',
+                  fontWeight: 500
+                }}
+              >
+                {tech}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Section 3: Official Employee Employment Records & Signed Deed */}
+      <div className="company-section">
+        <div className="section-kicker-row">
+          <span className="card-kicker">OFFICIAL EMPLOYEE RECORDS &amp; CREDENTIALS</span>
+          <span className="roadmap-note mono">DIGITALLY VERIFIED REPOSITORY</span>
+        </div>
+        <div className="hr-grid">
+          {/* Left Column: Archived Signed Paper Offer Letter View */}
+          <div className="hr-contract-col">
+            <div className="executive-card hr-contract-card">
+              <div className="contract-card-header">
                 <div>
-                  <h2 className="comp-name-title">VirtualHQ Technologies Inc.</h2>
-                  <p className="comp-tagline">Enterprise Distributed Workplace Infrastructure &amp; Cloud Workspaces · Delaware C-Corp</p>
+                  <span className="card-kicker">OFFICIAL CONTRACT ARCHIVE</span>
+                  <h3 className="contract-headline">Executive Appointment Order</h3>
                 </div>
+                <span className="contract-sealed-badge mono">✓ COUNTERSIGNED &amp; FILED</span>
               </div>
-              <div className="comp-headquarters-pill mono">
-                📍 101 Mission St, Suite 2400, San Francisco, CA 94105
-              </div>
-            </div>
 
-            {/* Key Corporate Metrics */}
-            <div className="comp-metrics-grid">
-              <div className="comp-metric-item">
-                <span className="comp-m-val mono">428+</span>
-                <span className="comp-m-label">Global Team Members</span>
-                <span className="comp-m-sub mono">Distributed across 22 countries</span>
-              </div>
-              <div className="comp-metric-item">
-                <span className="comp-m-val mono">Series B</span>
-                <span className="comp-m-label">Capitalization ($48M Raised)</span>
-                <span className="comp-m-sub mono">Lead: Benchmark &amp; Sequoia</span>
-              </div>
-              <div className="comp-metric-item">
-                <span className="comp-m-val mono">99.994%</span>
-                <span className="comp-m-label">Enterprise Cloud SLA</span>
-                <span className="comp-m-sub mono">Global Edge Latency &lt; 28ms</span>
-              </div>
-              <div className="comp-metric-item">
-                <span className="comp-m-val mono">SOC 2 / ISO</span>
-                <span className="comp-m-label">Security &amp; Compliance</span>
-                <span className="comp-m-sub mono">Type II Verified &amp; ISO-27001</span>
-              </div>
-            </div>
-          </div>
+              {/* Archived Paper Letter Container */}
+              <div className="archived-paper-letter">
+                <div className="archived-letter-header">
+                  <div className="archived-seal">{(company?.name || empCompanyName).slice(0, 2).toUpperCase()}</div>
+                  <div>
+                    <span className="a-company">{(company?.name || empCompanyName).toUpperCase()} TECHNOLOGIES INC.</span>
+                    <span className="a-sub">DIVISION OF HUMAN CAPITAL &amp; EXECUTIVE TALENT</span>
+                  </div>
+                  <span className="a-ref mono" id="hrContractRef">REF: {empIdStr}-EMP</span>
+                </div>
 
-          {/* Section 1: Executive Leadership & Corporate Hierarchy */}
-          <div className="company-section">
-            <div className="section-kicker-row">
-              <span className="card-kicker">EXECUTIVE LEADERSHIP &amp; DEPARTMENT HEADS</span>
-              <span className="roadmap-note mono">OFFICE OF THE CEO &amp; OPERATING COMMITTEE</span>
-            </div>
-            <div className="leadership-grid">
-              <div className="exec-leader-card">
-                <div className="exec-avatar">ER</div>
-                <div className="exec-meta">
-                  <span className="exec-name">Elena Rostova</span>
-                  <span className="exec-role">Founder &amp; Chief Executive Officer</span>
-                  <span className="exec-dept mono">EXECUTIVE OFFICE</span>
-                </div>
-              </div>
-              <div className="exec-leader-card">
-                <div className="exec-avatar">MV</div>
-                <div className="exec-meta">
-                  <span className="exec-name">Marcus Vance</span>
-                  <span className="exec-role">VP of Engineering &amp; Technology</span>
-                  <span className="exec-dept mono">ENGINEERING &amp; INFRA</span>
-                </div>
-              </div>
-              <div className="exec-leader-card">
-                <div className="exec-avatar">CM</div>
-                <div className="exec-meta">
-                  <span className="exec-name">Claire Moreau</span>
-                  <span className="exec-role">Chief Product Officer</span>
-                  <span className="exec-dept mono">PRODUCT &amp; DESIGN</span>
-                </div>
-              </div>
-              <div className="exec-leader-card">
-                <div className="exec-avatar">DP</div>
-                <div className="exec-meta">
-                  <span className="exec-name">David Park</span>
-                  <span className="exec-role">Chief Financial Officer</span>
-                  <span className="exec-dept mono">FINANCE &amp; LEGAL</span>
-                </div>
-              </div>
-              <div className="exec-leader-card">
-                <div className="exec-avatar">EV</div>
-                <div className="exec-meta">
-                  <span className="exec-name">Elena Vance</span>
-                  <span className="exec-role">Head of People &amp; Talent</span>
-                  <span className="exec-dept mono">HUMAN OPERATIONS</span>
+                <div className="a-body">
+                  <p className="a-p">
+                    This official deed confirms the appointment of <strong style={{ color: '#0f172a' }}>{userName}</strong> as{' '}
+                    <strong>{roleTitle}</strong> in the <strong>{deptName}</strong> at {company?.name || empCompanyName}.
+                  </p>
+
+                  <div className="a-terms-mini">
+                    <div className="a-row">
+                      <span className="a-lbl">Employee ID:</span>
+                      <span className="a-val mono">{empIdStr}</span>
+                    </div>
+                    <div className="a-row">
+                      <span className="a-lbl">Corporate Email:</span>
+                      <span className="a-val mono">{employee?.corporateEmail || `${employee?.handle || 'engineer'}@${empCompanyDomain}`}</span>
+                    </div>
+                    <div className="a-row">
+                      <span className="a-lbl">Clearance Tier:</span>
+                      <span className="a-val mono">LEVEL 01 · TIER A</span>
+                    </div>
+                    <div className="a-row">
+                      <span className="a-lbl">Reporting Line:</span>
+                      <span className="a-val">{mgrName}</span>
+                    </div>
+                  </div>
+
+                  {/* Real Digitally Preserved Signature */}
+                  <div className="a-signature-display">
+                    <span className="a-sig-label">EXECUTED HANDWRITTEN SIGNATURE:</span>
+                    <div className="a-sig-box" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.6rem', textAlign: 'center', minHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {employee?.signatureDataUrl ? (
+                        <img
+                          src={employee.signatureDataUrl}
+                          alt="Employee Signature"
+                          style={{ maxHeight: '52px', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.78rem' }}>
+                          Verified Digital Fingerprint on Record
+                        </span>
+                      )}
+                    </div>
+                    <span className="a-sig-sub mono">DIGITALLY SEALED IN SUPABASE ENTERPRISE VAULT</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 2: Official Employee Employment Records & Smartcard */}
-          <div className="company-section">
-            <div className="section-kicker-row">
-              <span className="card-kicker">OFFICIAL EMPLOYEE RECORDS &amp; CREDENTIALS</span>
-              <span className="roadmap-note mono">DIGITALLY VERIFIED REPOSITORY</span>
-            </div>
-            <div className="hr-grid">
-              {/* Left Column: Archived Signed Paper Offer Letter View */}
-              <div className="hr-contract-col">
-                <div className="executive-card hr-contract-card">
-                  <div className="contract-card-header">
+          {/* Right Column: Organization Roster */}
+          <div className="hr-benefits-col">
+            <div className="executive-card">
+              <div className="card-kicker-row">
+                <span className="card-kicker">TEAM DIRECTORY</span>
+                <span className="mono" style={{ fontSize: '0.72rem', color: '#4ade80' }}>
+                  {companyEmployees.length} COLLEAGUES
+                </span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.8rem' }}>
+                {company?.name || empCompanyName} Squad Roster
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '340px', overflowY: 'auto' }}>
+                {companyEmployees.map(colleague => (
+                  <div
+                    key={colleague.empId}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.6rem 0.8rem',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255, 255, 255, 0.06)'
+                    }}
+                  >
                     <div>
-                      <span className="card-kicker">OFFICIAL CONTRACT ARCHIVE</span>
-                      <h3 className="contract-headline">Executive Appointment Order</h3>
+                      <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '0.85rem' }}>
+                        {colleague.fullName}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#71717a' }}>
+                        {colleague.selectedRole?.title || 'Engineer'} · <span className="mono">{colleague.empId}</span>
+                      </div>
                     </div>
-                    <span className="contract-sealed-badge mono">✓ COUNTERSIGNED &amp; FILED</span>
+                    <span className="mono" style={{ fontSize: '0.72rem', color: '#38bdf8' }}>
+                      {colleague.userType ? colleague.userType.toUpperCase() : 'EMPLOYEE'}
+                    </span>
                   </div>
+                ))}
+              </div>
+            </div>
 
-                  {/* Archived Mini Paper Letter Container */}
-                  <div className="archived-paper-letter">
-                    <div className="archived-letter-header">
-                      <div className="archived-seal">VH</div>
-                      <div>
-                        <span className="a-company">VIRTUALHQ TECHNOLOGIES INC.</span>
-                        <span className="a-sub">DIVISION OF HUMAN CAPITAL &amp; EXECUTIVE TALENT</span>
-                      </div>
-                      <span className="a-ref mono" id="hrContractRef">REF: VHQ-2026-8302-EMP</span>
-                    </div>
-                    
-                    <div className="a-divider"></div>
-
-                    <p className="a-body-text">
-                      This certifies that <strong id="hrCandidateName">{userName}</strong> has been formally inducted into the position of{' '}
-                      <strong id="hrRoleTitle">{roleTitle}</strong> within the <strong id="hrDeptTitle">Engineering Division</strong>, reporting directly to{' '}
-                      <strong id="hrManagerName">Marcus Vance (Engineering Director)</strong>.
-                    </p>
-
-                    <div className="a-signatures-row">
-                      <div className="a-sig-block">
-                        <span className="a-sig-label">AUTHORIZED SIGNATORY</span>
-                        <span className="a-script-sig">Elena Vance</span>
-                        <span className="a-title">Head of People Operations</span>
-                      </div>
-                      <div className="a-sig-block">
-                        <span className="a-sig-label">EMPLOYEE SIGNATURE</span>
-                        <span className="a-script-sig user-sig" id="hrUserSignatureDisplay">{userName}</span>
-                        <span className="a-title" id="hrSigTimestamp">Executed &amp; Verified</span>
-                      </div>
-                    </div>
-
-                    <div className="a-red-stamp">
-                      <span>VIRTUALHQ INC. · OFFICIAL ARCHIVE · VERIFIED</span>
-                    </div>
-                  </div>
-
-                  <div className="contract-download-row">
-                    <span className="archive-sha mono">SHA-256: 8f92b7c4...e1809</span>
-                    <button
-                      type="button"
-                      className="btn-download-contract"
-                      id="btnDownloadContract"
-                      onClick={() => alert('Exporting Official VHQ Employment Contract PDF...')}
+            {/* Corporate Benefits */}
+            {company?.benefits && company.benefits.length > 0 && (
+              <div className="executive-card" style={{ marginTop: '1.25rem' }}>
+                <div className="card-kicker-row">
+                  <span className="card-kicker">CORPORATE BENEFITS &amp; PERKS</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {company.benefits.map((b, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '0.6rem 0.75rem',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        borderRadius: '6px'
+                      }}
                     >
-                      <span>Export Contract PDF</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Employee Badge & Security Clearances */}
-              <div className="hr-records-col">
-                {/* Employee ID Smartcard Preview Card */}
-                <div className="executive-card hr-badge-card">
-                  <div className="card-kicker-row">
-                    <span className="card-kicker">SECURITY CLEARANCE SMARTCARD</span>
-                    <span className="badge-status-green mono">ACTIVE · RFID 13.56MHz</span>
-                  </div>
-                  <div className="hr-smartcard-summary">
-                    <div className="hr-badge-avatar">{userInitials}</div>
-                    <div className="hr-badge-meta">
-                      <h4 className="hr-badge-name" id="hrCardName">{userName}</h4>
-                      <span className="hr-badge-role" id="hrCardRole">{roleTitle}</span>
-                      <span className="hr-badge-dept mono" id="hrCardDept">ENGINEERING DIVISION</span>
-                      <div className="hr-badge-id mono" id="hrCardId">ID: #VHQ-8302</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                        <strong style={{ fontSize: '0.82rem', color: '#f4f4f5' }}>{b.title}</strong>
+                        <span className="mono" style={{ fontSize: '0.68rem', color: '#4ade80' }}>{b.tier}</span>
+                      </div>
+                      <p style={{ fontSize: '0.74rem', color: '#71717a', margin: 0 }}>{b.desc}</p>
                     </div>
-                  </div>
-                </div>
-
-                {/* Corporate Policy & Induction Summary */}
-                <div className="executive-card hr-handbook-card">
-                  <div className="card-kicker-row">
-                    <span className="card-kicker">COMPLIANCE &amp; INTEGRATION</span>
-                  </div>
-                  <div className="handbook-links">
-                    <div className="h-item">
-                      <span className="h-title">Engineering Code Standards &amp; PR SLAs</span>
-                      <span className="h-sub">Review guidelines, 4-hour SLA, automated CI testing</span>
-                    </div>
-                    <div className="h-item">
-                      <span className="h-title">Proprietary Information &amp; IP Policy</span>
-                      <span className="h-sub">Enterprise intellectual property and confidential handling</span>
-                    </div>
-                    <div className="h-item">
-                      <span className="h-title">Performance Stipend Credit Schedule</span>
-                      <span className="h-sub">Quarterly review and compensation disbursal schedule</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
           </div>
-
-          {/* Section 3: Enterprise Benefits, Perks & Payroll */}
-          <div className="company-section">
-            <div className="section-kicker-row">
-              <span className="card-kicker">COMPENSATION, HEALTH &amp; EMPLOYEE BENEFITS</span>
-              <span className="roadmap-note mono">COMPREHENSIVE GLOBAL PACKAGE</span>
-            </div>
-            <div className="benefits-grid">
-              <div className="benefit-card">
-                <div className="benefit-icon">💳</div>
-                <div className="benefit-body">
-                  <div className="benefit-title-row">
-                    <span className="benefit-title">Bi-Monthly Payroll &amp; Direct Deposit</span>
-                    <span className="benefit-pill mono">1st &amp; 15th</span>
-                  </div>
-                  <p className="benefit-desc">Automated ACH salary deposits disbursed bi-weekly with electronic paystubs available in ADP / Workday.</p>
-                </div>
-              </div>
-
-              <div className="benefit-card">
-                <div className="benefit-icon">🏥</div>
-                <div className="benefit-body">
-                  <div className="benefit-title-row">
-                    <span className="benefit-title">Platinum Health, Dental &amp; Vision</span>
-                    <span className="benefit-pill mono">100% Covered</span>
-                  </div>
-                  <p className="benefit-desc">Comprehensive medical insurance via UnitedHealthcare PPO + Delta Dental with zero employee premium deductibles.</p>
-                </div>
-              </div>
-
-              <div className="benefit-card">
-                <div className="benefit-icon">📈</div>
-                <div className="benefit-body">
-                  <div className="benefit-title-row">
-                    <span className="benefit-title">401(k) Retirement with 6% Match</span>
-                    <span className="benefit-pill mono">Instant Vesting</span>
-                  </div>
-                  <p className="benefit-desc">Vanguard institutional 401(k) program with dollar-for-dollar company match up to 6% of base salary.</p>
-                </div>
-              </div>
-
-              <div className="benefit-card">
-                <div className="benefit-icon">🎓</div>
-                <div className="benefit-body">
-                  <div className="benefit-title-row">
-                    <span className="benefit-title">Annual Learning &amp; Certification Budget</span>
-                    <span className="benefit-pill mono">$2,500 / yr</span>
-                  </div>
-                  <p className="benefit-desc">Annual grant for O'Reilly, Coursera, AWS/GCP technical certifications, and international tech conferences.</p>
-                </div>
-              </div>
-
-              <div className="benefit-card">
-                <div className="benefit-icon">💻</div>
-                <div className="benefit-body">
-                  <div className="benefit-title-row">
-                    <span className="benefit-title">Home Office &amp; Ergonomics Stipend</span>
-                    <span className="benefit-pill mono">$1,200 / yr</span>
-                  </div>
-                  <p className="benefit-desc">Reimbursement for 4K external monitors, mechanical keyboards, ergonomic desk seating, and high-speed internet.</p>
-                </div>
-              </div>
-
-              <div className="benefit-card">
-                <div className="benefit-icon">🏖️</div>
-                <div className="benefit-body">
-                  <div className="benefit-title-row">
-                    <span className="benefit-title">Flexible Paid Time Off &amp; Holidays</span>
-                    <span className="benefit-pill mono">24 Days + 11 Hols</span>
-                  </div>
-                  <p className="benefit-desc">24 paid vacation days, 11 official enterprise holidays, plus unlimited dedicated wellness &amp; sick leave.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 4: Single Sign-On (SSO) Enterprise Systems Directory */}
-          <div className="company-section">
-            <div className="section-kicker-row">
-              <span className="card-kicker">ENTERPRISE SYSTEMS &amp; TOOLING DIRECTORY</span>
-              <span className="roadmap-note mono">OKTA / GOOGLE WORKSPACE SSO INTEGRATED</span>
-            </div>
-            <div className="tools-sso-grid">
-              <div className="sso-tool-card">
-                <div className="sso-left">
-                  <div className="sso-icon">🐙</div>
-                  <div className="sso-meta">
-                    <span className="sso-name">GitHub Enterprise</span>
-                    <span className="sso-sub mono">github.com/orgs/virtualhq</span>
-                  </div>
-                </div>
-                <a href="https://github.com" target="_blank" rel="noopener" className="btn-launch-sso">Launch ↗</a>
-              </div>
-
-              <div className="sso-tool-card">
-                <div className="sso-left">
-                  <div className="sso-icon">💬</div>
-                  <div className="sso-meta">
-                    <span className="sso-name">Slack Workplace</span>
-                    <span className="sso-sub mono">virtualhq.slack.com</span>
-                  </div>
-                </div>
-                <a href="https://slack.com" target="_blank" rel="noopener" className="btn-launch-sso">Launch ↗</a>
-              </div>
-
-              <div className="sso-tool-card">
-                <div className="sso-left">
-                  <div className="sso-icon">📐</div>
-                  <div className="sso-meta">
-                    <span className="sso-name">Figma Design System</span>
-                    <span className="sso-sub mono">figma.com/@virtualhq-tokens</span>
-                  </div>
-                </div>
-                <a href="https://figma.com" target="_blank" rel="noopener" className="btn-launch-sso">Launch ↗</a>
-              </div>
-
-              <div className="sso-tool-card">
-                <div className="sso-left">
-                  <div className="sso-icon">📊</div>
-                  <div className="sso-meta">
-                    <span className="sso-name">Datadog APM &amp; Logs</span>
-                    <span className="sso-sub mono">app.datadoghq.com</span>
-                  </div>
-                </div>
-                <a href="https://datadoghq.com" target="_blank" rel="noopener" className="btn-launch-sso">Launch ↗</a>
-              </div>
-
-              <div className="sso-tool-card">
-                <div className="sso-left">
-                  <div className="sso-icon">☁️</div>
-                  <div className="sso-meta">
-                    <span className="sso-name">AWS Management Console</span>
-                    <span className="sso-sub mono">aws.amazon.com/console</span>
-                  </div>
-                </div>
-                <a href="https://aws.amazon.com" target="_blank" rel="noopener" className="btn-launch-sso">Launch ↗</a>
-              </div>
-
-              <div className="sso-tool-card">
-                <div className="sso-left">
-                  <div className="sso-icon">📑</div>
-                  <div className="sso-meta">
-                    <span className="sso-name">Notion Corporate Wiki</span>
-                    <span className="sso-sub mono">notion.so/virtualhq</span>
-                  </div>
-                </div>
-                <a href="https://notion.so" target="_blank" rel="noopener" className="btn-launch-sso">Launch ↗</a>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 5: Corporate Governance & Compliance Policies */}
-          <div className="company-section">
-            <div className="section-kicker-row">
-              <span className="card-kicker">GOVERNANCE, POLICIES &amp; ETHICS HOTLINE</span>
-              <span className="roadmap-note mono">AUDIT COMPLIANCE &amp; LEGAL STANDARDS</span>
-            </div>
-            <div className="policies-compact-grid">
-              <div className="policy-compact-card">
-                <span className="policy-card-title">4-Hour Code Review &amp; PR SLA</span>
-                <p className="policy-card-desc">All blocking PRs submitted before 15:00 UTC must be reviewed within 4 business hours by squad peers.</p>
-                <span className="policy-meta-tag mono">ENG-POL-04 · MANDATORY</span>
-              </div>
-              <div className="policy-compact-card">
-                <span className="policy-card-title">SOC 2 Type II Data Confidentiality</span>
-                <p className="policy-card-desc">Production database access is strictly credentialed via HashiCorp Vault with zero persistent root keys.</p>
-                <span className="policy-meta-tag mono">SEC-POL-10 · STRICT</span>
-              </div>
-              <div className="policy-compact-card">
-                <span className="policy-card-title">Remote-First Async Communication</span>
-                <p className="policy-card-desc">Default to written documentation, public PR context, and recorded standups over ad-hoc video meetings.</p>
-                <span className="policy-meta-tag mono">OPS-POL-02 · GUIDELINE</span>
-              </div>
-              <div className="policy-compact-card">
-                <span className="policy-card-title">Anonymous Ethics &amp; HR Helpline</span>
-                <p className="policy-card-desc">Encrypted anonymous hotline for reporting compliance violations or workplace harassment.</p>
-                <span className="policy-meta-tag mono">compliance-ethics@virtualhq.internal</span>
-              </div>
-            </div>
-          </div>
-        </section>
+        </div>
+      </div>
+    </section>
   );
 };

@@ -178,6 +178,33 @@ export const AreaJourney: React.FC<AreaJourneyProps> = ({
             </span>
           </div>
           <div className="objectives-list" id="journeyObjectivesList">
+            {!activeTask && completedTasks.length === 0 && (
+              <div style={{ padding: '2.5rem 1rem', textAlign: 'center' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 0.75rem auto',
+                  color: '#a1a1aa'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.25rem' }}>
+                  No Sprint Objectives Dispatched
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: '#71717a', maxWidth: '340px', margin: '0 auto' }}>
+                  Sprint objectives and PR milestones will populate here once assigned or created in Supabase.
+                </p>
+              </div>
+            )}
+
             {activeTask && (
               <div className="objective-item">
                 <div className="obj-left">

@@ -26,3 +26,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local database scripts and schemas
+data/*
+!data/supabase_schema.sql
+*.sql
+!data/supabase_schema.sql

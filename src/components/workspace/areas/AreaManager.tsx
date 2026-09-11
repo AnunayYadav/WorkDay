@@ -1,19 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EmployeeState, PullRequest } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
+
+interface InteractiveDiffViewerProps {
+  patch: string;
+}
+
+const InteractiveDiffViewer: React.FC<InteractiveDiffViewerProps> = ({ patch }) => {
+  const lines = (patch || '// Clean repository solution patch').split('\n');
+  const additions = lines.filter(l => l.startsWith('+') && !l.startsWith('+++')).length;
+  const deletions = lines.filter(l => l.startsWith('-') && !l.startsWith('---')).length;
+
+  return (
+    <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: '#090a0f', marginBottom: '0.85rem' }}>
+      {/* Diff Meta Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.8rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+            <line x1="6" y1="3" x2="6" y2="15"/>
+            <circle cx="18" cy="6" r="3"/>
+            <circle cx="6" cy="18" r="3"/>
+            <path d="M18 9a9 9 0 0 1-9 9"/>
+          </svg>
+          <span className="mono" style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>GIT UNIFIED DIFF</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <span style={{ padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontSize: '0.67rem', fontWeight: 600, fontFamily: 'monospace' }}>
+            +{additions} lines
+          </span>
+          <span style={{ padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: '0.67rem', fontWeight: 600, fontFamily: 'monospace' }}>
+            -{deletions} lines
+          </span>
+        </div>
+      </div>
+
+      {/* Diff Lines Rendering */}
+      <div style={{ maxHeight: '230px', overflowY: 'auto', fontFamily: "'JetBrains Mono', 'Fira Code', monospace", fontSize: '0.72rem', lineHeight: '1.45', padding: '0.3rem 0' }}>
+        {lines.map((line, index) => {
+          let bg = 'transparent';
+          let color = '#d4d4d8';
+          let borderL = '3px solid transparent';
+
+          if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff') || line.startsWith('index')) {
+            color = '#94a3b8';
+            bg = 'rgba(255,255,255,0.02)';
+          } else if (line.startsWith('@@')) {
+            bg = 'rgba(56, 189, 248, 0.08)';
+            color = '#38bdf8';
+            borderL = '3px solid #38bdf8';
+          } else if (line.startsWith('+')) {
+            bg = 'rgba(34, 197, 94, 0.12)';
+            color = '#4ade80';
+            borderL = '3px solid #22c55e';
+          } else if (line.startsWith('-')) {
+            bg = 'rgba(239, 68, 68, 0.12)';
+            color = '#f87171';
+            borderL = '3px solid #ef4444';
+          }
+
+          return (
+            <div
+              key={index}
+              style={{
+                display: 'flex',
+                background: bg,
+                color: color,
+                borderLeft: borderL,
+                padding: '1px 8px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}
+            >
+              <span style={{ width: '28px', minWidth: '28px', color: '#52525b', userSelect: 'none', textAlign: 'right', marginRight: '10px', fontSize: '0.68rem' }}>
+                {index + 1}
+              </span>
+              <span>{line}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 interface AreaManagerProps {
   employee: EmployeeState;
   pullRequests: PullRequest[];
   onApprovePr: (pr: PullRequest, feedback: string) => void;
   onRequestChangesPr: (pr: PullRequest, feedback: string) => void;
+  onNavigate?: (area: string) => void;
 }
 
 export const AreaManager: React.FC<AreaManagerProps> = ({
   employee,
   pullRequests,
   onApprovePr,
-  onRequestChangesPr
+  onRequestChangesPr,
+  onNavigate
 }) => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'review' | 'chat'>('review');
@@ -23,18 +107,10 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
   const [managerFeedback, setManagerFeedback] = useState('');
 
   // Manager dialogue chat
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 'c1',
-      sender: employee.selectedRole?.manager?.name || 'Marcus Vance',
-      time: 'Just now',
-      isMe: false,
-      text: `Welcome to the team! I saw you just wrapped up onboarding. Your primary focus today is ticket #${employee.selectedRole?.problems?.[0]?.issue_no || '104'}. What can I help clarify regarding architecture, test coverage, or our sprint goals?`
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [upcomingMeeting, setUpcomingMeeting] = useState<any | null>(null);
 
-  const selectedPr = pullRequests.find(p => p.id === selectedPrId) || pullRequests[0];
   const mgr = employee.selectedRole?.manager || {
     name: 'Marcus Vance',
     title: 'Engineering Director',
@@ -42,7 +118,22 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
     quote: 'I value clean code, clear communication in standups, and attention to detail. If you are ever blocked on architecture or PR feedback, my door is always open.'
   };
 
-  const handleSendChat = (textToSend?: string) => {
+  useEffect(() => {
+    let isMounted = true;
+    CloudStorage.listMessages(employee.empId, 'manager').then(msgs => {
+      if (isMounted) setChatMessages(msgs || []);
+    });
+    CloudStorage.listMeetings(employee.empId).then(meets => {
+      if (isMounted && meets && meets.length > 0) {
+        setUpcomingMeeting(meets[0]);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [employee.empId]);
+
+  const selectedPr = pullRequests.find(p => p.id === selectedPrId) || pullRequests[0];
+
+  const handleSendChat = async (textToSend?: string) => {
     const text = textToSend || chatInput;
     if (!text.trim()) return;
 
@@ -56,27 +147,28 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
     setChatMessages(prev => [...prev, newMsg]);
     if (!textToSend) setChatInput('');
 
-    setTimeout(() => {
-      let reply = `Good question, ${employee.preferredName}. Keep the implementation focused on the acceptance criteria and make sure all 3 unit assertions pass green in Monaco Studio.`;
+    await CloudStorage.sendMessage(employee.empId, 'manager', newMsg);
+
+    setTimeout(async () => {
+      let reply = `Good question, ${employee.preferredName}. Keep the implementation focused on the acceptance criteria and make sure all unit assertions pass green in Monaco Studio.`;
       if (text.includes('fallback') || text.includes('boundary')) {
-        reply = `For error boundaries, return a clean glassmorphic fallback card with a retry CTA and log the error stack to the monitoring pipeline.`;
+        reply = `For error boundaries, return a clean fallback card with a retry CTA and log the error stack to the monitoring pipeline.`;
       } else if (text.includes('criteria') || text.includes('approving')) {
         reply = `Key approval criteria: zero lint errors, 100% unit test coverage for the touched methods, and clean commit formatting.`;
       } else if (text.includes('deadline')) {
-        reply = `Sprint 01 wraps up end of day Friday. Merging 2 deliverables puts you on track for Level 2 promotion evaluation.`;
+        reply = `Sprint 01 wraps up end of day Friday. Merging deliverables puts you on track for Level 2 promotion evaluation.`;
       }
 
-      setChatMessages(prev => [
-        ...prev,
-        {
-          id: String(Date.now() + 1),
-          sender: mgr.name,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isMe: false,
-          text: reply
-        }
-      ]);
-    }, 1000);
+      const replyMsg = {
+        id: String(Date.now() + 1),
+        sender: mgr.name,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isMe: false,
+        text: reply
+      };
+      setChatMessages(prev => [...prev, replyMsg]);
+      await CloudStorage.sendMessage(employee.empId, 'manager', replyMsg);
+    }, 800);
   };
 
   return (
@@ -111,7 +203,9 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
             <div className="mgr-schedule-box">
               <div className="sched-row">
                 <span className="s-label">Next 1-on-1 Review:</span>
-                <span className="s-val mono">Today at 2:30 PM UTC</span>
+                <span className="s-val mono">
+                  {upcomingMeeting ? (upcomingMeeting.schedule_time || upcomingMeeting.scheduleTime) : 'No session booked'}
+                </span>
               </div>
               <div className="sched-row">
                 <span className="s-label">PR Review SLA:</span>
@@ -119,20 +213,36 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              className="btn-schedule-sync"
-              id="btnBookSync"
-              onClick={() => {
-                showToast({
-                  title: '1-on-1 Agenda Confirmed',
-                  message: `Scheduled today at 2:30 PM with ${mgr.name}.`,
-                  type: 'success'
-                });
-              }}
-            >
-              <span>Confirm 1-on-1 Agenda (Today 2:30 PM)</span>
-            </button>
+            {upcomingMeeting ? (
+              <a
+                href={upcomingMeeting.link || 'https://zoom.us'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-schedule-sync"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              >
+                <span>Join Scheduled 1-on-1 →</span>
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="btn-schedule-sync"
+                id="btnBookSync"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('meetings');
+                  } else {
+                    showToast({
+                      title: 'Schedule 1-on-1',
+                      message: 'Head over to Meetings tab to schedule a live session with your manager.',
+                      type: 'info'
+                    });
+                  }
+                }}
+              >
+                <span>+ Schedule 1-on-1 in Meetings</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -212,31 +322,59 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
                       {selectedPr && (
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                            <div>
-                              <h4 style={{ fontSize: '0.92rem', color: '#fff', margin: 0 }}>{selectedPr.title}</h4>
-                              <span className="mono" style={{ fontSize: '0.72rem', color: '#71717a' }}>
-                                Author: {selectedPr.author} · Branch: feature/issue-{selectedPr.issue_no}
-                              </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                              <img
+                                src={employee.avatarUrl || `https://github.com/${employee.githubUsername || employee.handle}.png`}
+                                alt={selectedPr.author}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)', objectFit: 'cover' }}
+                              />
+                              <div>
+                                <h4 style={{ fontSize: '0.92rem', color: '#fff', margin: 0 }}>{selectedPr.title}</h4>
+                                <span className="mono" style={{ fontSize: '0.72rem', color: '#71717a' }}>
+                                  Author: {selectedPr.author} (@{employee.githubUsername || employee.handle}) · Branch: feature/issue-{selectedPr.issue_no}
+                                </span>
+                              </div>
                             </div>
                             <span className={`badge-solved`} style={{ display: selectedPr.status === 'approved_merged' ? 'inline-block' : 'none' }}>
                               ✓ MERGED (+50 XP)
                             </span>
                           </div>
 
-                          <div style={{ background: '#090b0e', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)', padding: '0.75rem', maxHeight: '180px', overflowY: 'auto', marginBottom: '0.8rem' }}>
-                            <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a', display: 'block', marginBottom: '0.4rem' }}>
-                              DIFF PATCH ({selectedPr.submissionType === 'zip' ? 'Solution ZIP' : 'SolutionPatch.tsx'}):
-                            </span>
-                            <pre className="mono" style={{ fontSize: '0.72rem', color: '#a7f3d0', margin: 0, whiteSpace: 'pre-wrap' }}>
-                              {selectedPr.codePatch || '// Clean production patch conforming to architecture specs.'}
-                            </pre>
-                          </div>
+                          {/* Syntax Highlighted Unified Diff Viewer */}
+                          <InteractiveDiffViewer patch={selectedPr.codePatch || ''} />
 
                           {selectedPr.status !== 'approved_merged' ? (
                             <div>
+                              {/* Quick Feedback Chips */}
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                                {[
+                                  'LGTM! Merging into main branch.',
+                                  'Regression suite passed green (3/3).',
+                                  'Clean architecture & specs adherence.'
+                                ].map((chip) => (
+                                  <button
+                                    key={chip}
+                                    type="button"
+                                    onClick={() => setManagerFeedback(chip)}
+                                    style={{
+                                      padding: '2px 8px',
+                                      borderRadius: '12px',
+                                      background: 'rgba(255,255,255,0.04)',
+                                      border: '1px solid rgba(255,255,255,0.08)',
+                                      color: '#94a3b8',
+                                      fontSize: '0.68rem',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    + {chip}
+                                  </button>
+                                ))}
+                              </div>
+
                               <textarea
                                 className="desk-scratchpad mono"
-                                style={{ height: '60px', marginBottom: '0.6rem', fontSize: '0.75rem' }}
+                                style={{ height: '54px', marginBottom: '0.6rem', fontSize: '0.75rem' }}
                                 placeholder="Lead review notes (e.g. 'Verified test assertions and error boundary structure. Clean PR.')..."
                                 value={managerFeedback}
                                 onChange={(e) => setManagerFeedback(e.target.value)}
@@ -245,7 +383,7 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
                                 <button
                                   type="button"
                                   className="btn-open-ide"
-                                  style={{ padding: '0.5rem 1rem', fontSize: '0.78rem' }}
+                                  style={{ padding: '0.5rem 1rem', fontSize: '0.78rem', background: '#16a34a', borderColor: '#22c55e' }}
                                   onClick={() => {
                                     onApprovePr(selectedPr, managerFeedback);
                                     setManagerFeedback('');
@@ -267,10 +405,15 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <div style={{ padding: '0.6rem', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                              <span className="mono" style={{ fontSize: '0.72rem', color: '#10b981' }}>
+                            <div style={{ padding: '0.6rem 0.8rem', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                              <span className="mono" style={{ fontSize: '0.74rem', color: '#10b981', display: 'block', fontWeight: 600 }}>
                                 ✓ Approved &amp; Merged by {mgr.name} · +50 XP Credits awarded to {employee.fullName}
                               </span>
+                              {selectedPr.reviewFeedback && (
+                                <p style={{ fontSize: '0.72rem', color: '#a1a1aa', margin: '0.3rem 0 0 0' }}>
+                                  Manager Feedback: "{selectedPr.reviewFeedback}"
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -285,15 +428,22 @@ export const AreaManager: React.FC<AreaManagerProps> = ({
             {activeTab === 'chat' && (
               <div>
                 <div className="chat-messages-scroll" id="mgrChatMessages" style={{ maxHeight: '220px', overflowY: 'auto', marginBottom: '0.8rem' }}>
-                  {chatMessages.map(msg => (
-                    <div key={msg.id} className={`chat-bubble ${msg.isMe ? 'user' : 'manager'}`} style={{ marginBottom: '0.6rem' }}>
-                      <div className="bubble-meta">
-                        <span className="bubble-sender" style={{ fontSize: '0.72rem' }}>{msg.sender}</span>
-                        <span className="bubble-time mono" style={{ fontSize: '0.68rem', marginLeft: '0.5rem' }}>{msg.time}</span>
-                      </div>
-                      <div className="bubble-body" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{msg.text}</div>
+                  {chatMessages.length === 0 ? (
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#71717a' }}>
+                      <p style={{ fontSize: '0.85rem', color: '#a1a1aa' }}>No conversation messages yet with {mgr.name}.</p>
+                      <p style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}>Send a question below or pick a prompt topic to begin.</p>
                     </div>
-                  ))}
+                  ) : (
+                    chatMessages.map(msg => (
+                      <div key={msg.id} className={`chat-bubble ${msg.isMe ? 'user' : 'manager'}`} style={{ marginBottom: '0.6rem' }}>
+                        <div className="bubble-meta">
+                          <span className="bubble-sender" style={{ fontSize: '0.72rem' }}>{msg.sender}</span>
+                          <span className="bubble-time mono" style={{ fontSize: '0.68rem', marginLeft: '0.5rem' }}>{msg.time}</span>
+                        </div>
+                        <div className="bubble-body" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>{msg.text}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 <div className="prompt-chips-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }}>
