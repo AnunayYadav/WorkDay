@@ -172,32 +172,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         inset: 0,
         zIndex: 99999,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        background: 'rgba(0, 0, 0, 0.75)',
+        background: 'rgba(0, 0, 0, 0.78)',
         backdropFilter: 'blur(28px) saturate(180%)',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-        padding: '0.75rem',
-        overflowY: 'auto'
+        padding: '1.25rem 0.75rem',
+        overflowY: 'auto',
+        boxSizing: 'border-box'
       }}
     >
       <div
         style={{
           width: '420px',
           maxWidth: '100%',
-          maxHeight: 'calc(100vh - 1.5rem)',
+          margin: 'auto',
+          maxHeight: 'calc(100vh - 2.5rem)',
           overflowY: 'auto',
-          background: 'rgba(22, 22, 26, 0.94)',
+          background: 'rgba(22, 22, 26, 0.96)',
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: '20px',
           boxShadow: '0 32px 80px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-          padding: '1.4rem 1.6rem 1.2rem',
+          padding: '1.15rem 1.4rem 0.95rem',
           position: 'relative',
           color: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
+          boxSizing: 'border-box',
           fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
         }}
       >
@@ -357,12 +360,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           /* 2. Standard Apple Minimal Authentication View */
           <div>
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '0.85rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '0.55rem' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  margin: '0 auto 0.35rem',
+                  width: '32px',
+                  height: '32px',
+                  margin: '0 auto 0.25rem',
                   borderRadius: '50%',
                   background: 'rgba(255, 255, 255, 0.08)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -371,17 +374,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   justifyContent: 'center'
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 600, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
                 {isSignUp 
                   ? (userRole === 'manager' ? 'Manager Registration' : userRole === 'hr' ? 'HR Lead Registration' : 'Employee Registration')
                   : 'Sign In to WorkDay'}
               </h2>
-              <p style={{ fontSize: '0.78rem', color: '#8e8e93', margin: '0.2rem auto 0', maxWidth: '340px', lineHeight: 1.35 }}>
+              <p style={{ fontSize: '0.74rem', color: '#8e8e93', margin: '0.15rem auto 0', maxWidth: '340px', lineHeight: 1.3 }}>
                 {isSignUp 
                   ? `Register your ${userRole === 'manager' ? 'Manager' : userRole === 'hr' ? 'HR' : 'Employee'} credentials and GitHub handle to begin your corporate onboarding.`
                   : 'Access your corporate workspace with your verified credentials.'}
@@ -391,21 +394,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* User-facing error callout */}
             {authError && (
               <div style={{
-                padding: '0.6rem 0.85rem',
+                padding: '0.45rem 0.65rem',
                 borderRadius: '8px',
                 background: 'rgba(239, 68, 68, 0.08)',
                 border: '1px solid rgba(239, 68, 68, 0.25)',
-                marginBottom: '0.65rem',
+                marginBottom: '0.45rem',
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '0.5rem'
+                gap: '0.45rem'
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}>
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <div style={{ flex: 1, fontSize: '0.75rem', color: '#fca5a5', lineHeight: 1.4 }}>
+                <div style={{ flex: 1, fontSize: '0.73rem', color: '#fca5a5', lineHeight: 1.35 }}>
                   {authError}
                 </div>
                 <button
@@ -419,11 +422,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {/* Email & GitHub Handle Authentication Form */}
-            <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               {isSignUp && (
                 <>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#8e8e93', marginBottom: '0.2rem', fontWeight: 500 }}>
+                    <label style={{ display: 'block', fontSize: '0.68rem', color: '#8e8e93', marginBottom: '0.15rem', fontWeight: 500 }}>
                       Full Legal Name
                     </label>
                     <input
@@ -437,12 +440,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="e.g. Jordan Hayes"
                       style={{
                         width: '100%',
-                        padding: '0.52rem 0.75rem',
+                        padding: '0.44rem 0.68rem',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: '10px',
+                        borderRadius: '8px',
                         color: '#ffffff',
-                        fontSize: '0.82rem',
+                        fontSize: '0.8rem',
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
@@ -450,14 +453,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
 
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
-                      <label style={{ fontSize: '0.7rem', color: '#8e8e93', fontWeight: 500 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
+                      <label style={{ fontSize: '0.68rem', color: '#8e8e93', fontWeight: 500 }}>
                         GitHub Username
                       </label>
-                      <span style={{ fontSize: '0.65rem', color: '#a1a1aa' }}>Syncs avatar &amp; repos</span>
+                      <span style={{ fontSize: '0.62rem', color: '#a1a1aa' }}>Syncs avatar &amp; repos</span>
                     </div>
                     <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#71717a', fontSize: '0.8rem' }}>@</span>
+                      <span style={{ position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)', color: '#71717a', fontSize: '0.76rem' }}>@</span>
                       <input
                         type="text"
                         required
@@ -469,12 +472,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         placeholder="your-github-username"
                         style={{
                           width: '100%',
-                          padding: '0.52rem 0.75rem 0.52rem 1.65rem',
+                          padding: '0.44rem 0.68rem 0.44rem 1.45rem',
                           background: 'rgba(255, 255, 255, 0.05)',
                           border: '1px solid rgba(255, 255, 255, 0.1)',
-                          borderRadius: '10px',
+                          borderRadius: '8px',
                           color: '#ffffff',
-                          fontSize: '0.82rem',
+                          fontSize: '0.8rem',
                           outline: 'none',
                           boxSizing: 'border-box'
                         }}
@@ -483,17 +486,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#8e8e93', marginBottom: '0.2rem', fontWeight: 500 }}>
+                    <label style={{ display: 'block', fontSize: '0.68rem', color: '#8e8e93', marginBottom: '0.15rem', fontWeight: 500 }}>
                       Enterprise Corporate Role
                     </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.45rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.38rem' }}>
                       {[
                         {
                           type: 'employee',
                           title: 'Employee',
                           desc: 'Engineer',
                           icon: (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="16 18 22 12 16 6" />
                               <polyline points="8 6 2 12 8 18" />
                             </svg>
@@ -504,7 +507,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           title: 'Manager',
                           desc: 'Squad Lead',
                           icon: (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                               <circle cx="9" cy="7" r="4" />
                               <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
@@ -517,7 +520,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           title: 'HR Lead',
                           desc: 'People Ops',
                           icon: (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                               <path d="m9 12 2 2 4-4" />
                             </svg>
@@ -531,7 +534,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             type="button"
                             onClick={() => setUserRole(r.type as UserRoleType)}
                             style={{
-                              padding: '0.45rem 0.3rem',
+                              padding: '0.35rem 0.25rem',
                               borderRadius: '8px',
                               background: isSel ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                               border: isSel ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
@@ -540,15 +543,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
-                              gap: '0.25rem',
+                              gap: '0.2rem',
                               transition: 'all 0.15s ease'
                             }}
                           >
                             <span style={{ color: isSel ? '#ffffff' : '#a1a1aa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {r.icon}
                             </span>
-                            <div style={{ fontSize: '0.74rem', fontWeight: 600 }}>{r.title}</div>
-                            <div style={{ fontSize: '0.62rem', color: isSel ? '#e4e4e7' : '#71717a' }}>{r.desc}</div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 600 }}>{r.title}</div>
+                            <div style={{ fontSize: '0.58rem', color: isSel ? '#e4e4e7' : '#71717a' }}>{r.desc}</div>
                           </button>
                         );
                       })}
@@ -558,12 +561,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
-                  <label style={{ fontSize: '0.7rem', color: '#8e8e93', fontWeight: 500 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
+                  <label style={{ fontSize: '0.68rem', color: '#8e8e93', fontWeight: 500 }}>
                     {isSignUp ? 'Corporate / Personal Email' : 'Email Address'}
                   </label>
                   {isSignUp && (
-                    <span style={{ fontSize: '0.64rem', color: '#a1a1aa' }}>e.g. gmail.com or company.corp</span>
+                    <span style={{ fontSize: '0.62rem', color: '#a1a1aa' }}>e.g. gmail.com or company.corp</span>
                   )}
                 </div>
                 <input
@@ -577,12 +580,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder={isSignUp ? "e.g. yourname@gmail.com or name@company.corp" : "yourname@gmail.com or name@company.corp"}
                   style={{
                     width: '100%',
-                    padding: '0.52rem 0.75rem',
+                    padding: '0.44rem 0.68rem',
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '10px',
+                    borderRadius: '8px',
                     color: '#ffffff',
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                     outline: 'none',
                     boxSizing: 'border-box'
                   }}
@@ -590,7 +593,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', color: '#8e8e93', marginBottom: '0.2rem', fontWeight: 500 }}>
+                <label style={{ display: 'block', fontSize: '0.68rem', color: '#8e8e93', marginBottom: '0.15rem', fontWeight: 500 }}>
                   Password
                 </label>
                 <input
@@ -601,12 +604,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="••••••••••••"
                   style={{
                     width: '100%',
-                    padding: '0.52rem 0.75rem',
+                    padding: '0.44rem 0.68rem',
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '10px',
+                    borderRadius: '8px',
                     color: '#ffffff',
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                     outline: 'none',
                     boxSizing: 'border-box'
                   }}
@@ -618,14 +621,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 disabled={loading}
                 style={{
                   width: '100%',
-                  padding: '0.68rem',
-                  marginTop: '0.25rem',
+                  padding: '0.58rem',
+                  marginTop: '0.2rem',
                   background: '#ffffff',
                   color: '#000000',
                   border: 'none',
-                  borderRadius: '10px',
+                  borderRadius: '9px',
                   fontWeight: 600,
-                  fontSize: '0.84rem',
+                  fontSize: '0.82rem',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.75 : 1,
                   display: 'flex',
@@ -638,7 +641,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               >
                 {loading ? (
                   <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
                       <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
                       <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
                     </svg>
@@ -655,7 +658,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 )}
               </button>
 
-              <div style={{ textAlign: 'center', marginTop: '0.2rem' }}>
+              <div style={{ textAlign: 'center', marginTop: '0.15rem' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -666,7 +669,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     background: 'none',
                     border: 'none',
                     color: '#8e8e93',
-                    fontSize: '0.74rem',
+                    fontSize: '0.72rem',
                     cursor: 'pointer',
                     textDecoration: 'underline'
                   }}
@@ -677,7 +680,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </form>
 
             {/* Subtle Supabase Settings Link */}
-            <div style={{ textAlign: 'center', marginTop: '1.25rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div style={{ textAlign: 'center', marginTop: '0.65rem', paddingTop: '0.45rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
               <button
                 type="button"
                 onClick={() => setShowConfig(true)}
@@ -685,7 +688,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   background: 'none',
                   border: 'none',
                   color: '#71717a',
-                  fontSize: '0.72rem',
+                  fontSize: '0.7rem',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
