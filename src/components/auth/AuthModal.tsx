@@ -85,7 +85,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     if (isSignUp) {
       const cleanGh = githubUsername.trim().replace(/^@/, '') || email.split('@')[0];
-      const res = await AuthService.signUpWithEmail(email, password, fullName || cleanGh, cleanGh);
+      const res = await AuthService.signUpWithEmail(email, password, fullName || cleanGh, cleanGh, userRole);
       setLoading(false);
       if (res.success && res.user) {
         const user = res.user;

@@ -140,7 +140,8 @@ export const AuthService = {
     email: string, 
     password: string, 
     fullName: string,
-    githubUsername?: string
+    githubUsername?: string,
+    userRole: 'employee' | 'manager' | 'hr' = 'employee'
   ): Promise<{ success: boolean; error?: string; user?: any; corporateEmail?: string }> {
     if (!isSupabaseConfigured) {
       return { success: false, error: 'Supabase project credentials are not configured.' };
@@ -156,7 +157,8 @@ export const AuthService = {
           data: { 
             full_name: fullName,
             github_username: cleanGh,
-            avatar_url: avatarUrl
+            avatar_url: avatarUrl,
+            user_type: userRole
           }
         }
       });
