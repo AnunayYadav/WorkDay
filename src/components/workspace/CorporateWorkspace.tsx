@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord } from '../../types';
+import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord, UserRoleType } from '../../types';
 import { CloudStorage } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 
@@ -13,6 +13,8 @@ import { AreaTeam } from './areas/AreaTeam';
 import { AreaManager } from './areas/AreaManager';
 import { AreaMeetings } from './areas/AreaMeetings';
 import { AreaCompany } from './areas/AreaCompany';
+import { AreaManagerDashboard } from './areas/AreaManagerDashboard';
+import { AreaHRDashboard } from './areas/AreaHRDashboard';
 
 interface CorporateWorkspaceProps {
   employee: EmployeeState;
@@ -30,7 +32,9 @@ export type TabType =
   | 'team'
   | 'manager'
   | 'meetings'
-  | 'company';
+  | 'company'
+  | 'manager_dashboard'
+  | 'hr_dashboard';
 
 export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   employee,
@@ -38,7 +42,12 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   onSignOut
 }) => {
   const { showToast } = useToast();
-  const [activeArea, setActiveArea] = useState<TabType>('home');
+  const [currentRole, setCurrentRole] = useState<UserRoleType>(employee.userType || 'employee');
+  const [activeArea, setActiveArea] = useState<TabType>(() => {
+    if (employee.userType === 'manager') return 'manager_dashboard';
+    if (employee.userType === 'hr') return 'hr_dashboard';
+    return 'home';
+  });
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
   const [roleProblems, setRoleProblems] = useState<ProblemIssue[]>([]);
   const [employeeProgress, setEmployeeProgress] = useState<EmployeeProgressRecord[]>([]);
@@ -160,6 +169,20 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     showToast({ title: 'Changes Requested', message: `Returned ${pr.id} to author with feedback.`, type: 'info' });
   };
 
+  const handleRoleSwitch = (newRole: UserRoleType) => {
+    setCurrentRole(newRole);
+    employee.userType = newRole;
+    CloudStorage.saveEmployee({ ...employee, userType: newRole }).catch(() => {});
+    if (newRole === 'manager') setActiveArea('manager_dashboard');
+    else if (newRole === 'hr') setActiveArea('hr_dashboard');
+    else setActiveArea('home');
+    showToast({
+      title: 'Privilege Level Updated',
+      message: `Active clearance switched to ${newRole.toUpperCase()} mode.`,
+      type: 'info'
+    });
+  };
+
   const areaTitles: Record<TabType, string> = {
     home: 'My Desk',
     journey: 'Career Journey',
@@ -170,7 +193,9 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     team: 'My Team',
     manager: 'My Manager',
     meetings: 'Meetings',
-    company: 'Company'
+    company: `${employee.companyName || 'Enterprise'} Portal`,
+    manager_dashboard: 'Engineering Leadership Console',
+    hr_dashboard: 'HR Leadership & Compliance'
   };
 
   const pendingPrCount = pullRequests.filter(p => p.status === 'pending_review').length;
@@ -190,9 +215,9 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               </svg>
             </div>
             <div className="brand-text">
-              <span className="brand-title">VirtualHQ</span>
+              <span className="brand-title">WorkDay</span>
               <span className="brand-dept mono" id="sideDeptTitle">
-                {employee.selectedRole?.title.toUpperCase() || 'ENGINEERING DIVISION'}
+                {employee.companyName ? `${employee.companyName.toUpperCase()} · ` : ''}{employee.selectedRole?.title.toUpperCase() || 'ENGINEERING DIVISION'}
               </span>
             </div>
           </div>
@@ -374,7 +399,51 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
                   <path d="M19 21V11l-6-4"/>
                 </svg>
               </div>
-              <span className="nav-label">Company</span>
+              <span className="nav-label">{employee.companyName || 'Company'}</span>
+            </button>
+          </div>
+
+          {/* Management & Leadership Tier */}
+          <div className="nav-group">
+            <div className="nav-group-label">LEADERSHIP &amp; OPS</div>
+
+            <button
+              type="button"
+              className={`nav-item ${activeArea === 'manager_dashboard' ? 'active' : ''}`}
+              data-target-area="manager_dashboard"
+              id="navItemManagerDashboard"
+              onClick={() => setActiveArea('manager_dashboard')}
+            >
+              <div className="nav-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <span className="nav-label">Manager Squad Hub</span>
+              {currentRole === 'manager' && (
+                <span className="event-badge live" style={{ marginLeft: 'auto' }}>L4+</span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`nav-item ${activeArea === 'hr_dashboard' ? 'active' : ''}`}
+              data-target-area="hr_dashboard"
+              id="navItemHRDashboard"
+              onClick={() => setActiveArea('hr_dashboard')}
+            >
+              <div className="nav-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <span className="nav-label">HR &amp; Compliance</span>
+              {currentRole === 'hr' && (
+                <span className="event-badge live" style={{ marginLeft: 'auto' }}>EXEC</span>
+              )}
             </button>
           </div>
         </nav>
@@ -390,13 +459,13 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
                   style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                 />
               ) : (
-                employee.preferredName?.slice(0, 2).toUpperCase() || 'AM'
+                employee.preferredName?.slice(0, 2).toUpperCase() || 'WD'
               )}
             </div>
             <div className="user-id-info">
               <span className="user-full-name" id="sideUserName">{employee.fullName}</span>
-              <span className="user-role-label" style={{ fontSize: '0.72rem', color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={employee.corporateEmail || `${employee.handle}@virtualhq.corp`}>
-                {employee.corporateEmail || `${employee.handle}@virtualhq.corp`}
+              <span className="user-role-label" style={{ fontSize: '0.72rem', color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={employee.corporateEmail || `${employee.handle}@${employee.companyDomain || 'stripe.corp'}`}>
+                {employee.corporateEmail || `${employee.handle}@${employee.companyDomain || 'stripe.corp'}`}
               </span>
             </div>
           </div>
@@ -412,7 +481,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            <span>Exit Workspace</span>
+            <span>Exit</span>
           </button>
         </div>
       </aside>
@@ -424,9 +493,9 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
         <header className="stage-topbar">
           <div className="stage-topbar-left">
             <div className="breadcrumb-trail">
-              <span className="crumb-org">VirtualHQ</span>
+              <span className="crumb-org">WorkDay</span>
               <span className="crumb-sep">/</span>
-              <span className="crumb-dept" id="topbarDeptCrumb">{employee.selectedRole?.title}</span>
+              <span className="crumb-dept" id="topbarDeptCrumb">{employee.companyName || 'Enterprise'}</span>
               <span className="crumb-sep">/</span>
               <span className="crumb-current" id="topbarCurrentCrumb">
                 {areaTitles[activeArea]}
@@ -435,21 +504,56 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
           </div>
 
           <div className="stage-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            {/* Active Company Badge */}
+            <span style={{
+              fontSize: '0.72rem',
+              color: '#ffffff',
+              background: 'rgba(255, 255, 255, 0.08)',
+              padding: '0.25rem 0.65rem',
+              borderRadius: '6px',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              fontWeight: 600
+            }}>
+              🏢 {employee.companyName || 'Stripe'}
+            </span>
+
+            {/* Interactive 3-Tier Role Switcher */}
+            <div style={{
+              display: 'inline-flex',
+              background: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: '6px',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              padding: '2px'
+            }}>
+              {(['employee', 'manager', 'hr'] as UserRoleType[]).map(role => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleRoleSwitch(role)}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    fontSize: '0.7rem',
+                    fontWeight: currentRole === role ? 600 : 400,
+                    color: currentRole === role ? '#ffffff' : '#71717a',
+                    background: currentRole === role ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize'
+                  }}
+                >
+                  {role === 'employee' ? '👨‍💻 Employee' : role === 'manager' ? '👔 Manager' : '🤝 HR'}
+                </button>
+              ))}
+            </div>
+
             {employee.corporateEmail && (
               <span style={{ fontSize: '0.72rem', color: '#e4e4e7', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 500 }} title={`Allotted Enterprise Identity: ${employee.corporateEmail}`}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a1a1aa' }}></span>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }}></span>
                 {employee.corporateEmail}
-              </span>
-            )}
-            {employee.githubUsername && (
-              <span style={{ fontSize: '0.72rem', color: '#e4e4e7', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 500 }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a1a1aa' }}></span>
-                @{employee.githubUsername}
-              </span>
-            )}
-            {employee.userType === 'manager' && (
-              <span style={{ fontSize: '0.72rem', color: '#ffffff', background: 'rgba(255, 255, 255, 0.08)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.14)', fontWeight: 600 }}>
-                👔 Lead Reviewer Mode
               </span>
             )}
             <div className="corporate-clock" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.8rem' }}>
@@ -462,7 +566,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
         <main className="stage-content-viewport">
           {activeArea === 'home' && (
             <AreaHome
-              employee={employee}
+              employee={{ ...employee, userType: currentRole }}
               activeTask={activeTask}
               completedCount={completedTasks.length}
               totalXp={totalXp}
@@ -474,7 +578,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
 
           {activeArea === 'journey' && (
             <AreaJourney
-              employee={employee}
+              employee={{ ...employee, userType: currentRole }}
               totalXp={totalXp}
               completedCount={completedTasks.length}
               activeTask={activeTask}
@@ -484,6 +588,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
 
           {activeArea === 'tasks' && (
             <AreaTasks
+              employee={{ ...employee, userType: currentRole }}
               activeTask={activeTask}
               completedTasks={completedTasks}
               queuedTasks={queuedTasks}
@@ -500,26 +605,26 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
           )}
 
           {activeArea === 'messages' && (
-            <AreaMessages employee={employee} />
+            <AreaMessages employee={{ ...employee, userType: currentRole }} />
           )}
 
           {activeArea === 'calendar' && (
             <AreaCalendar
-              employee={employee}
+              employee={{ ...employee, userType: currentRole }}
               onNavigate={(area) => setActiveArea(area as TabType)}
             />
           )}
 
           {activeArea === 'team' && (
             <AreaTeam
-              employee={employee}
+              employee={{ ...employee, userType: currentRole }}
               onNavigate={(area) => setActiveArea(area as TabType)}
             />
           )}
 
           {activeArea === 'manager' && (
             <AreaManager
-              employee={employee}
+              employee={{ ...employee, userType: currentRole }}
               pullRequests={pullRequests}
               onApprovePr={handleApprovePr}
               onRequestChangesPr={handleRequestChangesPr}
@@ -527,11 +632,22 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
           )}
 
           {activeArea === 'meetings' && (
-            <AreaMeetings employee={employee} />
+            <AreaMeetings employee={{ ...employee, userType: currentRole }} />
           )}
 
           {activeArea === 'company' && (
-            <AreaCompany employee={employee} />
+            <AreaCompany employee={{ ...employee, userType: currentRole }} />
+          )}
+
+          {activeArea === 'manager_dashboard' && (
+            <AreaManagerDashboard
+              employee={{ ...employee, userType: currentRole }}
+              onNavigateTab={(tab) => setActiveArea(tab as TabType)}
+            />
+          )}
+
+          {activeArea === 'hr_dashboard' && (
+            <AreaHRDashboard employee={{ ...employee, userType: currentRole }} />
           )}
         </main>
       </div>

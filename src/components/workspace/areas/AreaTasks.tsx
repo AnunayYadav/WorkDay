@@ -1,28 +1,42 @@
-import React, { useState } from 'react';
-import type { ProblemIssue } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import type { ProblemIssue, EmployeeState, TaskItem } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaTasksProps {
   activeTask: ProblemIssue | null;
   completedTasks: ProblemIssue[];
   queuedTasks: ProblemIssue[];
   onOpenStudio: (task: ProblemIssue) => void;
+  employee?: EmployeeState;
 }
 
 export const AreaTasks: React.FC<AreaTasksProps> = ({
   activeTask,
   completedTasks,
   queuedTasks,
-  onOpenStudio
+  onOpenStudio,
+  employee
 }) => {
-  const [taskFilter, setTaskFilter] = useState<'active' | 'completed' | 'backlog'>('active');
+  const [taskFilter, setTaskFilter] = useState<'active' | 'assigned' | 'completed' | 'backlog'>('active');
+  const [assignedTasks, setAssignedTasks] = useState<TaskItem[]>([]);
+
+  useEffect(() => {
+    if (employee?.empId) {
+      CloudStorage.listAssignedTasks(employee.empId).then(setAssignedTasks);
+      const unsub = CloudStorage.subscribeToTasks(() => {
+        CloudStorage.listAssignedTasks(employee.empId).then(setAssignedTasks);
+      });
+      return () => { unsub(); };
+    }
+  }, [employee?.empId]);
 
   const lvl = (activeTask?.level || 'Easy').toLowerCase();
 
   return (
     <section className="workspace-area active" id="areaTasks">
       <div className="area-header">
-        <h1 className="area-title">My Tasks</h1>
-        <p className="area-subtitle">Assigned sprint deliverables, solved solutions, and upcoming backlog progression.</p>
+        <h1 className="area-title">My Tasks &amp; Sprint Deliverables</h1>
+        <p className="area-subtitle">Assigned sprint tickets, manager delegations, solved solutions, and upcoming backlog progression.</p>
       </div>
 
       <div className="tasks-container">
@@ -35,6 +49,13 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
               onClick={() => setTaskFilter('active')}
             >
               Current Active (<span id="taskCountActive">{activeTask ? '1' : '0'}</span>)
+            </button>
+            <button
+              type="button"
+              className={`filter-chip ${taskFilter === 'assigned' ? 'active' : ''}`}
+              onClick={() => setTaskFilter('assigned')}
+            >
+              Manager Delegations (<span id="taskCountAssigned">{assignedTasks.length}</span>)
             </button>
             <button
               type="button"
@@ -177,7 +198,150 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
           </div>
         )}
 
-        {/* 2. Completed Tasks View Subpane */}
+        {/* 2. Manager Delegated Assigned Tasks View Subpane */}
+        {taskFilter === 'assigned' && (
+          <div id="tasksViewAssigned" className="tasks-subview">
+            <div className="assigned-tasks-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {assignedTasks.length === 0 ? (
+                <div className="tasks-empty-state" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem auto',
+                    color: '#a1a1aa'
+                  }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                  </div>
+                  <div className="empty-h" style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
+                    No Delegated Tasks Yet
+                  </div>
+                  <div className="empty-sub" style={{ fontSize: '0.82rem', color: '#71717a', maxWidth: '380px', margin: '0 auto' }}>
+                    Your Engineering Manager hasn't delegated specific tickets to you yet. When sprint tasks are dispatched from the Manager Console, they sync here in real time.
+                  </div>
+                </div>
+              ) : (
+                assignedTasks.map((task) => {
+                  const priorityColors: Record<string, { bg: string; color: string; border: string }> = {
+                    urgent: { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
+                    high: { bg: 'rgba(249, 115, 22, 0.15)', color: '#fb923c', border: 'rgba(249, 115, 22, 0.3)' },
+                    medium: { bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' },
+                    low: { bg: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
+                  };
+                  const pStyle = priorityColors[task.priority] || priorityColors.medium;
+
+                  const handleStatusChange = async (newStatus: TaskItem['status']) => {
+                    await CloudStorage.updateTaskStatus(task.id, newStatus);
+                    setAssignedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+                  };
+
+                  return (
+                    <div
+                      key={task.id}
+                      style={{
+                        background: '#0e1014',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '12px',
+                        padding: '1.25rem 1.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '5px',
+                            background: pStyle.bg,
+                            color: pStyle.color,
+                            border: `1px solid ${pStyle.border}`,
+                            textTransform: 'uppercase'
+                          }}>
+                            {task.priority} PRIORITY
+                          </span>
+                          <span className="mono" style={{ fontSize: '0.75rem', color: '#71717a' }}>
+                            ID: {task.id.slice(0, 8)}
+                          </span>
+                        </div>
+
+                        {/* Status Select Control */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#71717a' }}>Status:</span>
+                          <select
+                            value={task.status}
+                            onChange={(e) => handleStatusChange(e.target.value as TaskItem['status'])}
+                            style={{
+                              background: '#18181b',
+                              color: task.status === 'completed' ? '#4ade80' : '#ffffff',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '6px',
+                              padding: '0.25rem 0.6rem',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="todo">📋 To Do</option>
+                            <option value="in_progress">⚡ In Progress</option>
+                            <option value="review">🔍 In Review</option>
+                            <option value="completed">✅ Completed</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', margin: 0 }}>
+                        {task.title}
+                      </h3>
+
+                      {task.description && (
+                        <p style={{ fontSize: '0.85rem', color: '#a1a1aa', margin: 0, lineHeight: 1.5 }}>
+                          {task.description}
+                        </p>
+                      )}
+
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        paddingTop: '0.75rem',
+                        fontSize: '0.75rem',
+                        color: '#71717a',
+                        flexWrap: 'wrap',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <span>👤 Delegated by: <strong style={{ color: '#e4e4e7' }}>{task.assignedByName || task.assignedByEmpId}</strong></span>
+                          {task.dueDate && (
+                            <span>📅 Due: <strong style={{ color: '#fb923c' }}>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                          )}
+                        </div>
+                        <span className="mono">
+                          Assigned: {new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Completed Tasks View Subpane */}
         {taskFilter === 'completed' && (
           <div id="tasksViewCompleted" className="tasks-subview">
             <div className="completed-tasks-list" id="tasksCompletedContainer">

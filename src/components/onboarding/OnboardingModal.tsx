@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { PROBLEMS_DATASET } from '../../lib/dataset';
 import { CloudStorage } from '../../lib/supabase';
-import type { DepartmentRole, EmployeeState } from '../../types';
+import { PRESET_COMPANIES, type DepartmentRole, type EmployeeState, type CompanyPreset } from '../../types';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -42,14 +42,6 @@ function generateSvgSignature(strokes: Array<Array<{ x: number; y: number }>>, w
   return `data:image/svg+xml;utf8,${encodeURIComponent(cleanSvg)}`;
 }
 
-const DIALOGUES: Record<number, string> = {
-  1: '"Welcome to VirtualHQ. Today marks Day 1 of your corporate journey. Let’s establish your employee identity and corporate handle."',
-  2: '"Every engineer at VirtualHQ drives direct open-source velocity. Select the department and specialization track that fits your technical ambitions."',
-  3: '"Here is your official Corporate Appointment Letter. Review the performance benchmarks and execute your handwritten virtual signature below."',
-  4: '"Meet your Engineering Director and assigned squad. Your daily standups and code reviews will be coordinated directly through this team."',
-  5: '"Your smartcard credentials and Level 1 clearance have been provisioned in the enterprise directory. Step inside your virtual office when you’re ready."'
-};
-
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
   onClose,
@@ -60,8 +52,56 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [fullName, setFullName] = useState(initialData?.fullName || '');
   const [preferredName, setPreferredName] = useState(initialData?.preferredName || '');
   const [handle, setHandle] = useState(initialData?.handle || '');
-  const [empId, setEmpId] = useState(initialData?.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [empId, setEmpId] = useState(initialData?.empId || `WD-${Math.floor(1000 + Math.random() * 9000)}`);
   
+  // Dynamic Companies from Supabase
+  const [companies, setCompanies] = useState<CompanyPreset[]>(PRESET_COMPANIES);
+
+  useEffect(() => {
+    CloudStorage.listCompanies().then(list => {
+      if (list && list.length > 0) {
+        setCompanies(list);
+      }
+    });
+  }, []);
+
+  // Company Selection state
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
+    if (initialData?.companyName) {
+      const found = PRESET_COMPANIES.find(c => c.name.toLowerCase() === initialData.companyName?.toLowerCase());
+      return found ? found.id : 'custom';
+    }
+    return 'stripe';
+  });
+  const [customCompanyName, setCustomCompanyName] = useState<string>(() => {
+    if (initialData?.companyName && !PRESET_COMPANIES.some(c => c.name.toLowerCase() === initialData.companyName?.toLowerCase())) {
+      return initialData.companyName;
+    }
+    return '';
+  });
+  const [customCompanyDomain, setCustomCompanyDomain] = useState<string>(() => {
+    if (initialData?.companyDomain && !PRESET_COMPANIES.some(c => c.domain.toLowerCase() === initialData.companyDomain?.toLowerCase())) {
+      return initialData.companyDomain;
+    }
+    return '';
+  });
+
+  const activePreset = companies.find(c => c.id === selectedCompanyId) || PRESET_COMPANIES.find(c => c.id === selectedCompanyId);
+  const activeCompanyName = selectedCompanyId === 'custom'
+    ? (customCompanyName.trim() || 'Stripe')
+    : (activePreset?.name || 'Stripe');
+  const activeCompanyDomain = selectedCompanyId === 'custom'
+    ? (customCompanyDomain.trim().toLowerCase() || 'stripe.corp')
+    : (activePreset?.domain || 'stripe.corp');
+
+  const DIALOGUES: Record<number, string> = {
+    1: `"Welcome to WorkDay. Today marks Day 1 of your corporate journey at ${activeCompanyName}. Let's establish your company affiliation, employee identity, and corporate handle."`,
+    2: `"Every engineer at ${activeCompanyName} drives direct product velocity. Select the department and specialization track that fits your technical ambitions."`,
+    3: `"Here is your official Corporate Appointment Letter for ${activeCompanyName}. Review the performance benchmarks and execute your handwritten virtual signature below."`,
+    4: `"Meet your Engineering Director and assigned squad. Your daily standups and code reviews will be coordinated directly through this team."`,
+    5: `"Your smartcard credentials and Level 1 clearance have been provisioned in the enterprise directory. Step inside your virtual office when you’re ready."`
+  };
+
   const [activeDept, setActiveDept] = useState<DeptCategory>(
     (initialData?.department as DeptCategory) || 'engineering'
   );
@@ -90,7 +130,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
       preferredName: preferredName.trim() || initialData?.preferredName || 'Engineer',
       handle: cleanHandle,
-      corporateEmail: `${cleanHandle}@virtualhq.corp`,
+      corporateEmail: `${cleanHandle}@${activeCompanyDomain}`,
       githubUsername: initialData?.githubUsername || cleanHandle,
       empId,
       department: activeDept,
@@ -102,8 +142,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       avatarUrl: initialData?.avatarUrl || `https://github.com/${initialData?.githubUsername || cleanHandle}.png`,
       authProvider: initialData?.authProvider || 'email',
       userId: initialData?.userId,
-      userType: 'employee',
+      userType: initialData?.userType || 'employee',
       totalXp: initialData?.totalXp || 200,
+      companyName: activeCompanyName,
+      companyDomain: activeCompanyDomain,
       ...overrides
     };
     CloudStorage.saveEmployee(draft).catch(() => {});
@@ -292,7 +334,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     });
 
     const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'engineer';
-    const corpEmail = `${cleanHandle}@virtualhq.corp`;
+    const corpEmail = `${cleanHandle}@${activeCompanyDomain}`;
 
     const emp: EmployeeState = {
       fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
@@ -310,9 +352,20 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       avatarUrl: initialData?.avatarUrl || `https://github.com/${initialData?.githubUsername || cleanHandle}.png`,
       authProvider: initialData?.authProvider || 'email',
       userId: initialData?.userId,
-      userType: 'employee',
+      userType: initialData?.userType || 'employee',
+      companyName: activeCompanyName,
+      companyDomain: activeCompanyDomain,
       totalXp: initialData?.totalXp || 200
     };
+
+    // If user created a custom company, persist it to Supabase companies table
+    if (selectedCompanyId === 'custom' && customCompanyName.trim()) {
+      await CloudStorage.upsertCompany({
+        name: activeCompanyName,
+        domain: activeCompanyDomain,
+        tagline: `${activeCompanyName} Enterprise Workspace`
+      });
+    }
 
     // Instant local & cloud persistence
     await CloudStorage.saveEmployee(emp);
@@ -324,7 +377,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       {/* Onboarding Header */}
       <header className="onboard-header">
         <div className="header-left">
-          <span className="company-tag">VIRTUALHQ CORP</span>
+          <span className="company-tag" style={{ color: '#ffffff', fontWeight: 700, letterSpacing: '0.08em' }}>
+            WORKDAY ENTERPRISE
+          </span>
           <span className="header-divider">/</span>
           <span className="step-counter" id="onboardStepCounter">STAGE 0{step} OF 05</span>
         </div>
@@ -414,11 +469,108 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div className="onboard-step active" id="step1">
               <div className="step-header">
                 <span className="step-kicker">STEP 01</span>
-                <h3 className="step-title">Employee Identity</h3>
-                <p className="step-desc">Establish your official employee identity within the VirtualHQ corporate directory.</p>
+                <h3 className="step-title">Enterprise Organization &amp; Identity</h3>
+                <p className="step-desc">Select your company affiliation and establish your employee identity in the enterprise directory.</p>
               </div>
 
               <form id="profileForm" className="onboard-form" onSubmit={(e) => e.preventDefault()}>
+                {/* Company / Organization Selector */}
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <label style={{ margin: 0, fontWeight: 600, color: '#f4f4f5' }}>Select Your Enterprise Organization</label>
+                    <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a' }}>{activeCompanyName}</span>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#71717a', marginBottom: '0.6rem' }}>
+                    Choose your simulated tech employer or configure a custom company and domain.
+                  </p>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                    {companies.map((preset) => {
+                      const isSel = selectedCompanyId === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setSelectedCompanyId(preset.id)}
+                          style={{
+                            padding: '0.55rem 0.65rem',
+                            borderRadius: '8px',
+                            background: isSel ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                            border: isSel ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
+                            color: isSel ? '#ffffff' : '#a1a1aa',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: '0.82rem', color: isSel ? '#ffffff' : '#e4e4e7' }}>
+                            {preset.name}
+                          </div>
+                          <div className="mono" style={{ fontSize: '0.68rem', color: isSel ? '#d4d4d8' : '#71717a', marginTop: '2px' }}>
+                            @{preset.domain}
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom Company Option */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCompanyId('custom')}
+                      style={{
+                        padding: '0.55rem 0.65rem',
+                        borderRadius: '8px',
+                        background: selectedCompanyId === 'custom' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                        border: selectedCompanyId === 'custom' ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: selectedCompanyId === 'custom' ? '#ffffff' : '#a1a1aa',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: '0.82rem', color: selectedCompanyId === 'custom' ? '#ffffff' : '#e4e4e7' }}>
+                        + Custom
+                      </div>
+                      <div className="mono" style={{ fontSize: '0.68rem', color: selectedCompanyId === 'custom' ? '#d4d4d8' : '#71717a', marginTop: '2px' }}>
+                        Custom Domain
+                      </div>
+                    </button>
+                  </div>
+
+                  {selectedCompanyId === 'custom' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginTop: '0.6rem' }}>
+                      <input
+                        type="text"
+                        value={customCompanyName}
+                        onChange={(e) => setCustomCompanyName(e.target.value)}
+                        placeholder="Company Name (e.g. Acme Corp)"
+                        style={{
+                          background: '#12141a',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          color: '#ffffff',
+                          padding: '0.45rem 0.65rem',
+                          borderRadius: '6px',
+                          fontSize: '0.82rem'
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={customCompanyDomain}
+                        onChange={(e) => setCustomCompanyDomain(e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ''))}
+                        placeholder="Domain (e.g. acme.corp)"
+                        style={{
+                          background: '#12141a',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          color: '#ffffff',
+                          padding: '0.45rem 0.65rem',
+                          borderRadius: '6px',
+                          fontSize: '0.82rem'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="form-group">
                   <label htmlFor="empFullName">Full Legal Name</label>
                   <input
@@ -453,7 +605,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
                       placeholder="first.last"
                     />
-                    <span className="suffix">@virtualhq.corp</span>
+                    <span className="suffix">@{activeCompanyDomain}</span>
                   </div>
                 </div>
 
@@ -472,13 +624,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: '0.68rem', color: '#71717a', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                      Allotted Corporate Email
+                      Allotted Corporate Email ({activeCompanyName})
                     </div>
                     <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 600, marginTop: '2px', wordBreak: 'break-all' }}>
-                      {handle.trim() || 'your.handle'}@virtualhq.corp
+                      {handle.trim() || 'your.handle'}@{activeCompanyDomain}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '2px' }}>
-                      Primary student email: <span style={{ color: '#a1a1aa' }}>{initialData?.email || 'your-personal@email.com'}</span>
+                      Primary personal email: <span style={{ color: '#a1a1aa' }}>{initialData?.email || 'your-personal@email.com'}</span>
                     </div>
                   </div>
                   <span style={{
@@ -602,14 +754,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 {/* Letterhead Header */}
                 <div className="paper-header">
                   <div className="letterhead-brand">
-                    <div className="letterhead-seal">VH</div>
+                    <div className="letterhead-seal">{activeCompanyName.slice(0, 2).toUpperCase()}</div>
                     <div className="letterhead-details">
-                      <span className="letterhead-company">VIRTUALHQ TECHNOLOGIES INC.</span>
-                      <span className="letterhead-dept">DIVISION OF HUMAN CAPITAL & EXECUTIVE TALENT · 100 ENTERPRISE BLVD</span>
+                      <span className="letterhead-company">{activeCompanyName.toUpperCase()} TECHNOLOGIES INC.</span>
+                      <span className="letterhead-dept">DIVISION OF HUMAN CAPITAL &amp; EXECUTIVE TALENT · 100 ENTERPRISE BLVD</span>
                     </div>
                   </div>
                   <div className="letterhead-meta">
-                    <span className="paper-date" id="paperDocDate">September 10, 2026</span>
+                    <span className="paper-date" id="paperDocDate">September 11, 2026</span>
                     <span className="paper-ref mono" id="offerRefCode">REF: {empId}-EMP</span>
                   </div>
                 </div>
@@ -630,7 +782,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   </p>
 
                   <p className="paper-paragraph">
-                    On behalf of the Executive Leadership of <strong>VirtualHQ Technologies Inc.</strong>, we are pleased to confirm your appointment as{' '}
+                    On behalf of the Executive Leadership of <strong>{activeCompanyName} Technologies Inc.</strong>, we are pleased to confirm your appointment as{' '}
                     <strong id="letterRole">{selectedRole.title}</strong> in our <strong id="letterDept">{selectedRole.title} Department</strong>.{' '}
                     In this capacity, you will report directly to <strong id="letterManager">{selectedRole.manager.name} ({selectedRole.manager.title})</strong>.
                   </p>
@@ -645,7 +797,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       <tr>
                         <td className="col-label">Corporate Email Allotted</td>
                         <td className="col-val mono" style={{ color: '#0f172a', fontWeight: 600 }}>
-                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@virtualhq.corp
+                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@{activeCompanyDomain}
                         </td>
                       </tr>
                       <tr>
@@ -662,13 +814,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       </tr>
                       <tr>
                         <td className="col-label">Probationary Milestone</td>
-                        <td className="col-val">Sprint 01 Task Submission & Manager Code Review</td>
+                        <td className="col-val">Sprint 01 Task Submission &amp; Manager Code Review</td>
                       </tr>
                     </tbody>
                   </table>
 
                   <p className="paper-paragraph legal-clause">
-                    <strong>Terms of Induction:</strong> You will be evaluated on technical deliverable quality, sprint SLA adherence, and proactive collaboration in daily standups. All code, design assets, and documentation authored within VirtualHQ remain proprietary enterprise property.
+                    <strong>Terms of Induction:</strong> You will be evaluated on technical deliverable quality, sprint SLA adherence, and proactive collaboration in daily standups. All code, design assets, and documentation authored within {activeCompanyName} remain proprietary enterprise property.
                   </p>
 
                   {/* Interactive Handwritten Signature Area */}
@@ -867,8 +1019,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         </svg>
                       </div>
                       <div className="id-brand-text">
-                        <span className="id-brand-name">VIRTUALHQ</span>
-                        <span className="id-brand-sub">IDENTITY & SECURITY MANAGEMENT</span>
+                        <span className="id-brand-name">{activeCompanyName.toUpperCase()}</span>
+                        <span className="id-brand-sub">ENTERPRISE IDENTITY &amp; ACCESS</span>
                       </div>
                     </div>
                     <div className="id-nfc-indicator" title="RFID Contactless Enabled">
@@ -919,18 +1071,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         <h4 className="id-emp-name" id="badgeEmpName">{fullName}</h4>
                       </div>
                       <div className="id-field">
+                        <span className="id-label">ORGANIZATION</span>
+                        <span className="id-emp-role" style={{ color: '#ffffff', fontWeight: 600 }}>{activeCompanyName}</span>
+                      </div>
+                      <div className="id-field">
                         <span className="id-label">ALLOTTED CORPORATE EMAIL</span>
                         <span className="id-emp-role mono" style={{ fontSize: '0.74rem', color: '#f4f4f5', fontWeight: 600 }}>
-                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@virtualhq.corp
+                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@{activeCompanyDomain}
                         </span>
                       </div>
                       <div className="id-field">
                         <span className="id-label">ROLE / DESIGNATION</span>
                         <span className="id-emp-role" id="badgeEmpRole">{selectedRole.title}</span>
-                      </div>
-                      <div className="id-field">
-                        <span className="id-label">DIVISION</span>
-                        <span className="id-emp-dept" id="badgeEmpDept">{selectedRole.title} DIVISION</span>
                       </div>
                     </div>
                   </div>
@@ -938,8 +1090,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   {/* Holographic Security Foil Ribbon */}
                   <div className="id-security-foil">
                     <div className="foil-track">
-                      <span>SECURE · VIRTUALHQ CORP · ENCRYPTED NFC 13.56 MHz · AUTHENTICATED EMPLOYEE · ACCESS GRANTED · </span>
-                      <span>SECURE · VIRTUALHQ CORP · ENCRYPTED NFC 13.56 MHz · AUTHENTICATED EMPLOYEE · ACCESS GRANTED · </span>
+                      <span>SECURE · {activeCompanyName.toUpperCase()} CORP · ENCRYPTED NFC 13.56 MHz · AUTHENTICATED EMPLOYEE · ACCESS GRANTED · </span>
+                      <span>SECURE · {activeCompanyName.toUpperCase()} CORP · ENCRYPTED NFC 13.56 MHz · AUTHENTICATED EMPLOYEE · ACCESS GRANTED · </span>
                     </div>
                   </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { EmployeeState } from '../../../types';
 import { CloudStorage } from '../../../lib/supabase';
 
@@ -12,6 +12,8 @@ interface MessageItem {
   isMe: boolean;
   text: string;
   time: string;
+  empId?: string;
+  threadId?: string;
 }
 
 export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
@@ -22,10 +24,20 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
   };
 
   const [colleagues, setColleagues] = useState<EmployeeState[]>([]);
-  const [activeThread, setActiveThread] = useState<string>('manager');
+  const [activeThread, setActiveThread] = useState<string>('#general');
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputVal, setInputVal] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,17 +50,20 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
     return () => { isMounted = false; };
   }, [employee.empId]);
 
-  // Build real channel list from manager & real registered colleagues
+  // Build canonical channel & direct directory
   const channels = [
-    { id: 'manager', name: mgr.name, role: mgr.title, initials: mgr.initials, isManager: true },
+    { id: '#general', name: '#general', role: 'All-Hands & Squad Chat', initials: '#', isChannel: true },
+    { id: '#engineering', name: '#engineering', role: 'Architecture & Deployments', initials: 'EN', isChannel: true },
+    { id: '#announcements', name: '#announcements', role: 'Executive Announcements', initials: '📢', isChannel: true },
+    { id: `mgr-${mgr.name.toLowerCase().replace(/\s+/g, '_')}`, name: `${mgr.name} (Manager)`, role: mgr.title, initials: mgr.initials, isChannel: false, isManager: true },
     ...colleagues.map((c) => ({
-      id: `emp-${c.empId}`,
+      id: c.empId,
       name: c.fullName,
-      role: c.selectedRole?.title || 'Engineer',
+      role: `${c.userType === 'manager' ? '👔 Manager · ' : c.userType === 'hr' ? '🤝 HR · ' : ''}${c.selectedRole?.title || 'Engineer'}`,
       initials: c.preferredName ? c.preferredName.slice(0, 2).toUpperCase() : 'EM',
-      isManager: false
-    })),
-    { id: 'announcements', name: '#squad-announcements', role: 'Official Channel', initials: '#', isManager: false }
+      isChannel: false,
+      isManager: c.userType === 'manager'
+    }))
   ];
 
   const activeChannel = channels.find(c => c.id === activeThread) || channels[0];
@@ -68,51 +83,90 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
 
   useEffect(() => {
     loadMessages(activeThread);
+
+    // Subscribe to realtime messages on this thread
+    const unsubscribe = CloudStorage.subscribeToMessages(employee.empId, activeThread, (incomingMsg) => {
+      setMessages(prev => {
+        if (prev.some(m => m.id === incomingMsg.id)) return prev;
+        return [...prev, incomingMsg];
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [activeThread, employee.empId]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
 
+    const textToSend = inputVal.trim();
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: MessageItem = {
-      id: String(Date.now()),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}`,
       sender: employee.fullName,
       isMe: true,
-      text: inputVal.trim(),
-      time: timeStr
+      text: textToSend,
+      time: timeStr,
+      empId: employee.empId,
+      threadId: activeThread
     };
 
-    const next = [...messages, userMsg];
-    setMessages(next);
+    setMessages(prev => [...prev, userMsg]);
     setInputVal('');
 
     await CloudStorage.sendMessage(employee.empId, activeThread, userMsg);
 
-    // If messaging manager, generate direct contextual response
-    if (activeThread === 'manager') {
+    // If messaging simulated manager thread, trigger intelligent automated acknowledgment
+    if (activeChannel.isManager && activeChannel.id.startsWith('mgr-')) {
+      setIsTyping(true);
       setTimeout(async () => {
-        const replyText = `Thanks for the update, ${employee.preferredName}. Keep moving forward on your deliverables and make sure unit specs pass before submitting the PR.`;
+        setIsTyping(false);
+        const replyText = `Thanks for the update, ${employee.preferredName}. Keep pushing your deliverables in ${employee.companyName || 'the current sprint'} and feel free to ping me if you need architecture unblocking.`;
         const replyMsg: MessageItem = {
-          id: String(Date.now() + 1),
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now() + 1}`,
           sender: mgr.name,
           isMe: false,
           text: replyText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          empId: 'system-manager',
+          threadId: activeThread
         };
         setMessages(prev => [...prev, replyMsg]);
         await CloudStorage.sendMessage(employee.empId, activeThread, replyMsg);
-      }, 800);
+      }, 1200);
     }
   };
 
   return (
     <section className="workspace-area active" id="areaMessages">
       <div className="area-header">
-        <h1 className="area-title">Messages &amp; Direct Channels</h1>
-        <p className="area-subtitle">
-          Direct messaging with your reporting manager {mgr.name} and squad teammates.
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 className="area-title">Realtime Messages &amp; Squad Channels</h1>
+            <p className="area-subtitle">
+              Synchronized team communications across {employee.companyName || 'organization'} channels and private 1-on-1s.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.25rem 0.6rem',
+              background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid rgba(34, 197, 94, 0.25)',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              color: '#4ade80',
+              fontWeight: 500
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }}></span>
+              Supabase Realtime Active
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="messages-layout">
@@ -120,6 +174,7 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
         <div className="messages-sidebar executive-card">
           <div className="card-kicker-row">
             <span className="card-kicker">CHANNELS &amp; DIRECTS</span>
+            <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a' }}>{channels.length}</span>
           </div>
 
           <div className="threads-list">
@@ -129,7 +184,9 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
                 className={`thread-item ${activeThread === ch.id ? 'active' : ''}`}
                 onClick={() => setActiveThread(ch.id)}
               >
-                <div className="t-avatar mono">{ch.initials}</div>
+                <div className={`t-avatar mono ${ch.isChannel ? 'channel-avatar' : ''}`}>
+                  {ch.initials}
+                </div>
                 <div className="t-info">
                   <div className="t-name-row">
                     <span className="t-name">{ch.name}</span>
@@ -145,10 +202,17 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
         <div className="conversation-pane executive-card">
           {/* Header */}
           <div className="conv-header">
-            <div className="conv-avatar mono">{activeChannel.initials}</div>
+            <div className={`conv-avatar mono ${activeChannel.isChannel ? 'channel-avatar' : ''}`}>
+              {activeChannel.initials}
+            </div>
             <div className="conv-meta">
               <span className="conv-name">{activeChannel.name}</span>
               <span className="conv-role">{activeChannel.role}</span>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <span className="mono" style={{ fontSize: '0.72rem', color: '#71717a' }}>
+                {activeChannel.isChannel ? 'PUBLIC CHANNEL' : 'ENCRYPTED 1-ON-1'}
+              </span>
             </div>
           </div>
 
@@ -156,7 +220,7 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
           <div className="conv-body">
             {loading && (
               <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#71717a', fontSize: '0.85rem' }}>
-                Loading conversation...
+                Connecting to live thread...
               </div>
             )}
 
@@ -179,25 +243,41 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
                   </svg>
                 </div>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ffffff', marginBottom: '0.35rem' }}>
-                  No Messages Yet
+                  No Messages in {activeChannel.name}
                 </h4>
                 <p style={{ fontSize: '0.8rem', color: '#71717a', maxWidth: '340px', margin: '0 auto' }}>
-                  Start the conversation with <strong style={{ color: '#d4d4d8' }}>{activeChannel.name}</strong> regarding tickets, specs, or sprint progress.
+                  Start the realtime conversation regarding tickets, architecture, or deliverables.
                 </p>
               </div>
             )}
 
             {!loading && messages.length > 0 && (
               <div className="messages-stream">
-                {messages.map((m) => (
-                  <div key={m.id} className={`msg-bubble ${m.isMe ? 'msg-me' : 'msg-them'}`}>
-                    <div className="msg-author-row">
-                      <span className="msg-sender">{m.isMe ? 'You' : m.sender}</span>
-                      <span className="msg-time mono">{m.time}</span>
+                {messages.map((m) => {
+                  const isMe = m.empId ? m.empId === employee.empId : m.isMe;
+                  return (
+                    <div key={m.id} className={`msg-bubble ${isMe ? 'msg-me' : 'msg-them'}`}>
+                      <div className="msg-author-row">
+                        <span className="msg-sender">{isMe ? 'You' : m.sender}</span>
+                        <span className="msg-time mono">{m.time}</span>
+                      </div>
+                      <div className="msg-content">{m.text}</div>
                     </div>
-                    <div className="msg-content">{m.text}</div>
+                  );
+                })}
+
+                {isTyping && (
+                  <div className="msg-bubble msg-them" style={{ opacity: 0.7 }}>
+                    <div className="msg-author-row">
+                      <span className="msg-sender">{mgr.name}</span>
+                      <span className="msg-time mono">typing...</span>
+                    </div>
+                    <div className="msg-content" style={{ fontStyle: 'italic', color: '#a1a1aa' }}>
+                      Writing a reply...
+                    </div>
                   </div>
-                ))}
+                )}
+                <div ref={messagesEndRef} />
               </div>
             )}
           </div>

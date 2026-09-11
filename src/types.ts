@@ -1,3 +1,61 @@
+export type UserRoleType = 'employee' | 'manager' | 'hr';
+
+export interface Company {
+  id: string;
+  name: string;
+  domain: string;
+  tagline: string;
+  description: string;
+  headquarters: string;
+  founded: string;
+  metrics: {
+    headcount: string;
+    valuation: string;
+    uptime: string;
+    compliance: string;
+  };
+  leadership: Array<{
+    name: string;
+    role: string;
+    dept: string;
+    initials: string;
+  }>;
+  benefits: Array<{
+    title: string;
+    desc: string;
+    tier: string;
+  }>;
+  techStack: string[];
+}
+
+export type CompanyPreset = Pick<Company, 'id' | 'name' | 'domain' | 'tagline'>;
+
+export const PRESET_COMPANIES: CompanyPreset[] = [
+  { id: 'stripe', name: 'Stripe', domain: 'stripe.corp', tagline: 'Global Financial Infrastructure & Developer APIs' },
+  { id: 'linear', name: 'Linear', domain: 'linear.app', tagline: 'Issue Tracking & High-Velocity Engineering' },
+  { id: 'meta', name: 'Meta', domain: 'meta.corp', tagline: 'Open Source AI Models & Global Scale Infrastructure' },
+  { id: 'google', name: 'Google Cloud', domain: 'google.corp', tagline: 'Distributed Systems & Hyperscale Cloud Infrastructure' },
+  { id: 'vercel', name: 'Vercel', domain: 'vercel.corp', tagline: 'Frontend Cloud & Serverless Edge Frameworks' },
+  { id: 'supabase', name: 'Supabase', domain: 'supabase.corp', tagline: 'Open Source Postgres & Realtime Backend Infrastructure' }
+];
+
+export interface TaskItem {
+  id: string;
+  assignedToEmpId: string;
+  assignedToName: string;
+  assignedByEmpId: string;
+  assignedByName: string;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'todo' | 'in_progress' | 'review' | 'completed';
+  dueDate?: string;
+  repo?: string;
+  issueNo?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface EmployeeState {
   fullName: string;
   preferredName: string;
@@ -12,10 +70,12 @@ export interface EmployeeState {
   avatarUrl?: string;
   authProvider?: 'github' | 'email' | 'guest';
   userId?: string;
-  userType?: 'employee' | 'manager';
+  userType?: UserRoleType;
   totalXp?: number;
   githubUsername?: string;
   corporateEmail?: string;
+  companyName?: string;
+  companyDomain?: string;
 }
 
 export interface EmployeeProgressRecord {

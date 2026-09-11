@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuthService, isSupabaseConfigured, updateSupabaseConfig, CloudStorage } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
-import type { EmployeeState } from '../../types';
+import type { EmployeeState, UserRoleType } from '../../types';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const { showToast } = useToast();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [userRole, setUserRole] = useState<UserRoleType>('employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -95,7 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           handle: cleanGh.toLowerCase(),
           githubUsername: cleanGh,
           avatarUrl: `https://github.com/${cleanGh}.png`,
-          empId: `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
+          empId: `WD-${Math.floor(1000 + Math.random() * 9000)}`,
           department: 'engineering',
           selectedRole: undefined as any,
           signatureDataUrl: '',
@@ -104,14 +105,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           email: user.email,
           authProvider: 'email',
           userId: user.id,
-          userType: 'employee'
+          userType: userRole,
+          companyName: 'Stripe',
+          companyDomain: 'stripe.corp'
         };
         await CloudStorage.saveEmployee(newEmp);
         onAuthenticated(newEmp);
         onClose();
         showToast({
           title: 'Account Created',
-          message: `Welcome, ${newEmp.preferredName}! Proceeding to official corporate onboarding.`,
+          message: `Welcome, ${newEmp.preferredName}! Registered as ${userRole.toUpperCase()}. Proceeding to corporate onboarding.`,
           type: 'success'
         });
       } else {
@@ -467,6 +470,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           boxSizing: 'border-box'
                         }}
                       />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', color: '#8e8e93', marginBottom: '0.35rem', fontWeight: 500 }}>
+                      Enterprise Corporate Role
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                      {[
+                        { type: 'employee', label: '👨‍💻 Employee', desc: 'Engineer' },
+                        { type: 'manager', label: '👔 Manager', desc: 'Squad Lead' },
+                        { type: 'hr', label: '🤝 HR Lead', desc: 'People Ops' }
+                      ].map(r => {
+                        const isSel = userRole === r.type;
+                        return (
+                          <button
+                            key={r.type}
+                            type="button"
+                            onClick={() => setUserRole(r.type as UserRoleType)}
+                            style={{
+                              padding: '0.5rem 0.4rem',
+                              borderRadius: '10px',
+                              background: isSel ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                              border: isSel ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
+                              color: isSel ? '#ffffff' : '#a1a1aa',
+                              cursor: 'pointer',
+                              textAlign: 'center'
+                            }}
+                          >
+                            <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>{r.label}</div>
+                            <div style={{ fontSize: '0.66rem', color: isSel ? '#e4e4e7' : '#71717a' }}>{r.desc}</div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </>

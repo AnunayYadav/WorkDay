@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { PullRequest, EmployeeState, ProblemIssue, EmployeeProgressRecord } from '../types';
+import type { PullRequest, EmployeeState, ProblemIssue, EmployeeProgressRecord, TaskItem, UserRoleType, Company } from '../types';
 import { PROBLEMS_DATASET } from './dataset';
 
 // Detect Supabase credentials from .env or persistent user configuration
@@ -60,6 +60,17 @@ export function updateSupabaseConfig(url: string, key: string) {
       flowType: 'pkce'
     }
   });
+}
+
+/**
+ * Computes deterministic canonical thread ID for 1-on-1 direct messages or channels
+ */
+export function getCanonicalThreadId(currentEmpId: string, threadId: string): string {
+  if (!threadId) return '#general';
+  if (threadId.startsWith('#')) return threadId;
+  if (threadId.startsWith('direct:')) return threadId;
+  const sorted = [currentEmpId || 'user', threadId].sort();
+  return `direct:${sorted[0]}_${sorted[1]}`;
 }
 
 /**
@@ -226,9 +237,12 @@ export const CloudStorage = {
         }
 
         if (effectiveUserId) {
+          const companyDomain = data.companyDomain || 'stripe.corp';
+          const defaultCorpEmail = `${data.handle || 'engineer'}@${companyDomain}`;
+
           const profilePayload = {
             user_id: effectiveUserId,
-            emp_id: data.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
+            emp_id: data.empId || `WD-${Math.floor(1000 + Math.random() * 9000)}`,
             full_name: data.fullName || 'Engineering Recruit',
             preferred_name: data.preferredName || (data.fullName ? data.fullName.split(' ')[0] : 'Engineer'),
             handle: data.handle || 'engineer',
@@ -240,8 +254,11 @@ export const CloudStorage = {
             auth_provider: data.authProvider || 'email',
             avatar_url: data.avatarUrl || '',
             email: authEmail || data.email || '',
-            corporate_email: data.corporateEmail || `${data.handle || 'engineer'}@virtualhq.corp`,
+            corporate_email: data.corporateEmail || defaultCorpEmail,
             github_username: data.githubUsername || data.handle || '',
+            company_name: data.companyName || 'Stripe',
+            company_domain: companyDomain,
+            user_type: data.userType || 'employee',
             total_xp: data.totalXp ?? 200,
             updated_at: new Date().toISOString()
           };
@@ -265,6 +282,7 @@ export const CloudStorage = {
               role_title: profilePayload.role_title,
               is_signed: profilePayload.is_signed,
               signature_url: profilePayload.signature_url,
+              user_type: profilePayload.user_type,
               updated_at: profilePayload.updated_at
             };
             const { error: coreErr } = await supabase
@@ -370,6 +388,9 @@ export const CloudStorage = {
         } catch (_) {}
 
         const meta = user.user_metadata || {};
+        const companyDomain = data.company_domain || meta.company_domain || 'stripe.corp';
+        const defaultCorpEmail = `${data.handle || 'engineer'}@${companyDomain}`;
+
         const profileEmp: EmployeeState = {
           fullName: data.full_name || meta.full_name || meta.name || 'Engineering Recruit',
           preferredName: data.preferred_name || (data.full_name ? data.full_name.split(' ')[0] : 'Engineer'),
@@ -381,12 +402,14 @@ export const CloudStorage = {
           isSigned: isSignedVal,
           currentStep: isSignedVal ? 5 : (data.current_step || 1),
           email: data.email || user.email,
-          corporateEmail: data.corporate_email || meta.corporate_email || `${data.handle || 'engineer'}@virtualhq.corp`,
+          corporateEmail: data.corporate_email || meta.corporate_email || defaultCorpEmail,
           githubUsername: data.github_username || meta.github_username || data.handle || '',
           avatarUrl: data.avatar_url || meta.avatar_url || (data.github_username ? `https://github.com/${data.github_username}.png` : ''),
           authProvider: data.auth_provider || (user.app_metadata?.provider as any) || 'email',
           userId: data.user_id,
-          userType: 'employee',
+          userType: (data.user_type as any) || meta.user_type || 'employee',
+          companyName: data.company_name || meta.company_name || 'Stripe',
+          companyDomain: companyDomain,
           totalXp: data.total_xp ?? 200
         };
 
@@ -473,6 +496,7 @@ export const CloudStorage = {
           const allRoles = Object.values(PROBLEMS_DATASET.DEPARTMENT_ROLES).flat() as any[];
           return data.map((row: any) => {
             const role = allRoles.find((r: any) => r.title === row.role_title) || allRoles[0];
+            const compDomain = row.company_domain || 'stripe.corp';
             return {
               fullName: row.full_name,
               preferredName: row.preferred_name,
@@ -484,12 +508,14 @@ export const CloudStorage = {
               isSigned: Boolean(row.is_signed),
               currentStep: 5,
               email: row.email,
-              corporateEmail: row.corporate_email || `${row.handle}@virtualhq.corp`,
+              corporateEmail: row.corporate_email || `${row.handle}@${compDomain}`,
               githubUsername: row.github_username,
               avatarUrl: row.avatar_url || (row.github_username ? `https://github.com/${row.github_username}.png` : ''),
               authProvider: row.auth_provider,
               userId: row.user_id,
-              userType: 'employee',
+              userType: (row.user_type as UserRoleType) || 'employee',
+              companyName: row.company_name || 'Stripe',
+              companyDomain: compDomain,
               totalXp: row.total_xp || 200
             };
           });
@@ -902,27 +928,47 @@ export const CloudStorage = {
   },
 
   /**
-   * Real Messages Service connected to Supabase
+   * Real Messages Service connected to Supabase (Bidirectional & Realtime)
    */
   async listMessages(empId: string, threadId: string): Promise<any[]> {
+    const isChannel = threadId.startsWith('#');
+    const canonical = isChannel ? threadId : getCanonicalThreadId(empId, threadId);
+
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('messages')
           .select('*')
-          .eq('emp_id', empId)
-          .eq('thread_id', threadId)
           .order('created_at', { ascending: true });
 
+        if (isChannel) {
+          query = query.eq('thread_id', threadId);
+        } else {
+          // Allow messages from canonical thread ID or legacy one-way ID
+          query = query.or(`thread_id.eq.${canonical},thread_id.eq.${threadId}`);
+        }
+
+        const { data, error } = await query;
+
         if (!error && data) {
-          return data;
+          return data.map((m: any) => ({
+            id: m.id,
+            sender: m.sender_name,
+            text: m.text,
+            isMe: m.emp_id === empId,
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            empId: m.emp_id,
+            threadId: m.thread_id,
+            createdAt: m.created_at
+          }));
         }
       } catch (_) {}
     }
 
     try {
-      const key = `vhq_messages_${empId}_${threadId}`;
-      const stored = localStorage.getItem(key);
+      const key = `vhq_messages_${canonical}`;
+      const legacyKey = `vhq_messages_${empId}_${threadId}`;
+      const stored = localStorage.getItem(key) || localStorage.getItem(legacyKey);
       if (stored) return JSON.parse(stored);
     } catch (_) {}
 
@@ -930,15 +976,19 @@ export const CloudStorage = {
   },
 
   async sendMessage(empId: string, threadId: string, msg: any): Promise<boolean> {
+    const isChannel = threadId.startsWith('#');
+    const canonical = isChannel ? threadId : getCanonicalThreadId(empId, threadId);
+    const msgId = msg.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}`);
+
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase.from('messages').insert({
-          id: msg.id,
+          id: msgId,
           emp_id: empId,
-          thread_id: threadId,
+          thread_id: canonical,
           sender_name: msg.sender,
           text: msg.text,
-          is_me: msg.isMe,
+          is_me: true,
           created_at: new Date().toISOString()
         });
         if (!error) return true;
@@ -946,14 +996,205 @@ export const CloudStorage = {
     }
 
     try {
-      const key = `vhq_messages_${empId}_${threadId}`;
+      const key = `vhq_messages_${canonical}`;
       const stored = localStorage.getItem(key);
       const list = stored ? JSON.parse(stored) : [];
-      list.push(msg);
+      list.push({
+        id: msgId,
+        sender: msg.sender,
+        text: msg.text,
+        isMe: true,
+        empId,
+        threadId: canonical,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: new Date().toISOString()
+      });
       localStorage.setItem(key, JSON.stringify(list));
     } catch (_) {}
 
     return true;
+  },
+
+  subscribeToMessages(empId: string, threadId: string, onMessage: (msg: any) => void): () => void {
+    if (!isSupabaseConfigured) return () => {};
+    const isChannel = threadId.startsWith('#');
+    const canonical = isChannel ? threadId : getCanonicalThreadId(empId, threadId);
+
+    const channelName = `rt_msg_${canonical.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        (payload) => {
+          const row = payload.new as any;
+          if (row.thread_id === canonical || row.thread_id === threadId) {
+            onMessage({
+              id: row.id,
+              sender: row.sender_name,
+              text: row.text,
+              isMe: row.emp_id === empId,
+              time: new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              empId: row.emp_id,
+              threadId: row.thread_id,
+              createdAt: row.created_at
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToMeetings(onUpdate: () => void): () => void {
+    if (!isSupabaseConfigured) return () => {};
+    const channel = supabase
+      .channel('rt_meetings_feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
+        onUpdate();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  /**
+   * Real Assigned Tasks Service (Manager Task Delegation)
+   */
+  async listAssignedTasks(empId?: string): Promise<TaskItem[]> {
+    if (isSupabaseConfigured) {
+      try {
+        let query = supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (empId) {
+          query = query.eq('assigned_to_emp_id', empId);
+        }
+
+        const { data, error } = await query;
+        if (!error && data) {
+          return data.map((t: any) => ({
+            id: t.id,
+            assignedToEmpId: t.assigned_to_emp_id,
+            assignedToName: t.assigned_to_name,
+            assignedByEmpId: t.assigned_by_emp_id,
+            assignedByName: t.assigned_by_name,
+            title: t.title,
+            description: t.description,
+            priority: t.priority,
+            status: t.status,
+            dueDate: t.due_date,
+            repo: t.repo,
+            issueNo: t.issue_no,
+            createdAt: t.created_at,
+            updatedAt: t.updated_at
+          }));
+        }
+      } catch (err) {
+        console.warn('[Supabase Cloud] Error listing tasks:', err);
+      }
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_tasks');
+      if (stored) {
+        const list = JSON.parse(stored) as TaskItem[];
+        return empId ? list.filter(t => t.assignedToEmpId === empId) : list;
+      }
+    } catch (_) {}
+
+    return [];
+  },
+
+  async createAssignedTask(task: Omit<TaskItem, 'id' | 'createdAt'>): Promise<TaskItem | null> {
+    const newTask: TaskItem = {
+      ...task,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('tasks').insert({
+          id: newTask.id,
+          assigned_to_emp_id: newTask.assignedToEmpId,
+          assigned_to_name: newTask.assignedToName,
+          assigned_by_emp_id: newTask.assignedByEmpId,
+          assigned_by_name: newTask.assignedByName,
+          title: newTask.title,
+          description: newTask.description,
+          priority: newTask.priority,
+          status: newTask.status,
+          due_date: newTask.dueDate,
+          repo: newTask.repo,
+          issue_no: newTask.issueNo,
+          created_at: newTask.createdAt,
+          updated_at: newTask.updatedAt
+        });
+        if (error) {
+          console.warn('[Supabase Cloud] Insert task error:', error.message);
+        }
+      } catch (err) {
+        console.warn('[Supabase Cloud] Task insert error:', err);
+      }
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_tasks');
+      const list = stored ? JSON.parse(stored) : [];
+      list.unshift(newTask);
+      localStorage.setItem('vhq_tasks', JSON.stringify(list));
+    } catch (_) {}
+
+    return newTask;
+  },
+
+  async updateTaskStatus(taskId: string, status: TaskItem['status']): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('tasks')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', taskId);
+      } catch (_) {}
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_tasks');
+      if (stored) {
+        const list = JSON.parse(stored) as TaskItem[];
+        const updated = list.map(t => t.id === taskId ? { ...t, status, updatedAt: new Date().toISOString() } : t);
+        localStorage.setItem('vhq_tasks', JSON.stringify(updated));
+      }
+    } catch (_) {}
+
+    return true;
+  },
+
+  subscribeToTasks(onUpdate: () => void): () => void {
+    if (!isSupabaseConfigured) return () => {};
+    const channel = supabase
+      .channel('rt_tasks_feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        onUpdate();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   /**
@@ -1004,5 +1245,140 @@ export const CloudStorage = {
     } catch (_) {}
 
     return true;
+  },
+
+  /**
+   * Real Companies Service connected to Supabase
+   */
+  async listCompanies(): Promise<Company[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          return data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            domain: c.domain,
+            tagline: c.tagline,
+            description: c.description,
+            headquarters: c.headquarters,
+            founded: c.founded,
+            metrics: c.metrics || {},
+            leadership: c.leadership || [],
+            benefits: c.benefits || [],
+            techStack: c.tech_stack || []
+          }));
+        }
+      } catch (err) {
+        console.warn('[Supabase Cloud] Error listing companies:', err);
+      }
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_companies');
+      if (stored) return JSON.parse(stored);
+    } catch (_) {}
+
+    return [];
+  },
+
+  async getCompany(query: string): Promise<Company | null> {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return null;
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .or(`id.ilike.%${q}%,name.ilike.%${q}%,domain.ilike.%${q}%`)
+          .limit(1)
+          .maybeSingle();
+
+        if (!error && data) {
+          return {
+            id: data.id,
+            name: data.name,
+            domain: data.domain,
+            tagline: data.tagline,
+            description: data.description,
+            headquarters: data.headquarters,
+            founded: data.founded,
+            metrics: data.metrics || {},
+            leadership: data.leadership || [],
+            benefits: data.benefits || [],
+            techStack: data.tech_stack || []
+          };
+        }
+      } catch (err) {
+        console.warn('[Supabase Cloud] Error fetching company:', err);
+      }
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_companies');
+      if (stored) {
+        const list = JSON.parse(stored) as Company[];
+        const found = list.find(c => 
+          c.id.toLowerCase() === q || 
+          c.name.toLowerCase().includes(q) || 
+          c.domain.toLowerCase().includes(q)
+        );
+        if (found) return found;
+      }
+    } catch (_) {}
+
+    return null;
+  },
+
+  async upsertCompany(company: Partial<Company> & { name: string; domain: string }): Promise<Company | null> {
+    const id = company.id || company.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const fullCompany: Company = {
+      id,
+      name: company.name,
+      domain: company.domain,
+      tagline: company.tagline || 'Enterprise Software Engineering Organization',
+      description: company.description || `${company.name} builds cutting-edge enterprise platforms.`,
+      headquarters: company.headquarters || 'San Francisco, CA',
+      founded: company.founded || '2020',
+      metrics: company.metrics || { headcount: '500+', valuation: 'Series B', uptime: '99.99%', compliance: 'SOC 2' },
+      leadership: company.leadership || [],
+      benefits: company.benefits || [],
+      techStack: company.techStack || ['TypeScript', 'React', 'Node.js', 'PostgreSQL']
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('companies').upsert({
+          id: fullCompany.id,
+          name: fullCompany.name,
+          domain: fullCompany.domain,
+          tagline: fullCompany.tagline,
+          description: fullCompany.description,
+          headquarters: fullCompany.headquarters,
+          founded: fullCompany.founded,
+          metrics: fullCompany.metrics,
+          leadership: fullCompany.leadership,
+          benefits: fullCompany.benefits,
+          tech_stack: fullCompany.techStack,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+      } catch (err) {
+        console.warn('[Supabase Cloud] Upsert company error:', err);
+      }
+    }
+
+    try {
+      const stored = localStorage.getItem('vhq_companies');
+      const list = stored ? JSON.parse(stored) as Company[] : [];
+      const updated = [fullCompany, ...list.filter(c => c.id !== fullCompany.id)];
+      localStorage.setItem('vhq_companies', JSON.stringify(updated));
+    } catch (_) {}
+
+    return fullCompany;
   }
 };
