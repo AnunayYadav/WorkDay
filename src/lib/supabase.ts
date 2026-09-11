@@ -130,12 +130,6 @@ export const AuthService = {
       const cleanGh = (githubUsername || '').trim().replace(/^@/, '');
       const avatarUrl = cleanGh ? `https://github.com/${cleanGh}.png` : '';
 
-      // Allot official corporate email to student based on their name or handle
-      const nameParts = fullName.trim().toLowerCase().split(/\s+/);
-      const cleanFirst = nameParts[0]?.replace(/[^a-z0-9]/g, '') || 'engineer';
-      const cleanLast = nameParts.length > 1 ? nameParts[nameParts.length - 1]?.replace(/[^a-z0-9]/g, '') : cleanGh || 'recruit';
-      const corporateEmail = `${cleanFirst}.${cleanLast}@virtualhq.corp`;
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -143,13 +137,12 @@ export const AuthService = {
           data: { 
             full_name: fullName,
             github_username: cleanGh,
-            avatar_url: avatarUrl,
-            corporate_email: corporateEmail
+            avatar_url: avatarUrl
           }
         }
       });
       if (error) return { success: false, error: error.message };
-      return { success: true, user: data.user, corporateEmail };
+      return { success: true, user: data.user };
     } catch (err: any) {
       return { success: false, error: err.message };
     }

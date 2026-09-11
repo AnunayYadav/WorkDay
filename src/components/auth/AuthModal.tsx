@@ -87,14 +87,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (res.success && res.user) {
         const user = res.user;
         const name = fullName.trim() || cleanGh;
-        const allottedCorpEmail = res.corporateEmail || `${name.split(' ')[0].toLowerCase()}.${cleanGh.toLowerCase()}@virtualhq.corp`;
         const newEmp: EmployeeState = {
           fullName: name,
           preferredName: name.split(' ')[0],
           handle: cleanGh.toLowerCase(),
           githubUsername: cleanGh,
           avatarUrl: `https://github.com/${cleanGh}.png`,
-          corporateEmail: allottedCorpEmail,
           empId: `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
           department: 'engineering',
           selectedRole: undefined as any,
@@ -111,7 +109,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
         showToast({
           title: 'Account Created',
-          message: `Official company email allotted: ${allottedCorpEmail}. Welcome, ${newEmp.preferredName}!`,
+          message: `Welcome, ${newEmp.preferredName}! Proceeding to official corporate onboarding.`,
           type: 'success'
         });
       } else {
@@ -367,12 +365,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </svg>
               </div>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 600, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
-                {isSignUp ? 'Student & Recruit Registration' : 'Sign In'}
+                {isSignUp ? 'Student Registration' : 'Sign In'}
               </h2>
               <p style={{ fontSize: '0.82rem', color: '#8e8e93', margin: '0.4rem auto 0', maxWidth: '340px', lineHeight: 1.45 }}>
                 {isSignUp 
-                  ? 'Sign up with your personal email and GitHub handle. You will be allotted an official @virtualhq.corp corporate email.'
-                  : 'Access your desk with your personal email or company-allotted @virtualhq.corp address.'}
+                  ? 'Register with your student / personal email and GitHub handle to begin your corporate onboarding.'
+                  : 'Access your desk with your email or company-allotted @virtualhq.corp address.'}
               </p>
             </div>
 
@@ -442,7 +440,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     {isSignUp ? 'Personal / College Email' : 'Email Address'}
                   </label>
                   {isSignUp && (
-                    <span style={{ fontSize: '0.66rem', color: '#a1a1aa' }}>Use your personal or college email</span>
+                    <span style={{ fontSize: '0.66rem', color: '#a1a1aa' }}>e.g. gmail.com or college.edu</span>
                   )}
                 </div>
                 <input
@@ -464,45 +462,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                 />
               </div>
-
-              {/* Company Allotted Email Badge Preview for Students */}
-              {isSignUp && (
-                <div style={{
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px dashed rgba(255, 255, 255, 0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem'
-                }}>
-                  <div style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: 'rgba(56, 189, 248, 0.12)',
-                    border: '1px solid rgba(56, 189, 248, 0.25)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#38bdf8',
-                    fontSize: '11px'
-                  }}>
-                    💼
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.66rem', color: '#8e8e93', fontWeight: 500 }}>
-                      COMPANY-ALLOTTED CORPORATE EMAIL
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#ffffff', fontFamily: 'monospace', fontWeight: 600, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {(fullName.trim().split(/\s+/)[0] || 'student').toLowerCase().replace(/[^a-z0-9]/g, '')}.{(githubUsername.trim().replace(/^@/, '') || 'recruit').toLowerCase().replace(/[^a-z0-9]/g, '')}@virtualhq.corp
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '0.64rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.12)', color: '#4ade80', fontWeight: 600 }}>
-                    Auto-Allotted
-                  </span>
-                </div>
-              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.72rem', color: '#8e8e93', marginBottom: '0.35rem', fontWeight: 500 }}>
@@ -547,7 +506,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   boxShadow: '0 4px 14px rgba(255, 255, 255, 0.12)'
                 }}
               >
-                {loading ? 'Processing...' : (isSignUp ? 'Create Account & Allot Corporate Email →' : 'Sign In to Workspace →')}
+                {loading ? 'Processing...' : (isSignUp ? 'Create Student Account →' : 'Sign In to Workspace →')}
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '0.35rem' }}>

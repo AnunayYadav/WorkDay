@@ -172,8 +172,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       origin: { y: 0.6 }
     });
 
-    const cleanHandle = handle.trim() || initialData?.handle || 'engineer';
-    const corpEmail = initialData?.corporateEmail || `${cleanHandle}@virtualhq.corp`;
+    const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'engineer';
+    const corpEmail = `${cleanHandle}@virtualhq.corp`;
 
     const emp: EmployeeState = {
       fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
@@ -189,7 +189,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       currentStep: 5,
       email: initialData?.email || '',
       avatarUrl: initialData?.avatarUrl || `https://github.com/${initialData?.githubUsername || cleanHandle}.png`,
-      authProvider: initialData?.authProvider || 'github',
+      authProvider: initialData?.authProvider || 'email',
       userId: initialData?.userId,
       userType: 'employee',
       totalXp: initialData?.totalXp || 200
@@ -322,7 +322,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="empHandle">Corporate Email Handle</label>
+                  <label htmlFor="empHandle">Choose Corporate Email Handle</label>
                   <div className="input-with-suffix">
                     <input
                       type="text"
@@ -333,6 +333,48 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     />
                     <span className="suffix">@virtualhq.corp</span>
                   </div>
+                </div>
+
+                {/* Live Corporate Email Allotment Card in HR Onboarding */}
+                <div style={{
+                  padding: '0.85rem 1rem',
+                  borderRadius: '12px',
+                  background: 'rgba(56, 189, 248, 0.05)',
+                  border: '1px dashed rgba(56, 189, 248, 0.25)',
+                  marginTop: '0.75rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.85rem'
+                }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    flexShrink: 0
+                  }}>
+                    💼
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      Official Company Email To Be Allotted
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#38bdf8', fontFamily: 'monospace', fontWeight: 700, marginTop: '2px', wordBreak: 'break-all' }}>
+                      {handle.trim() || 'your.handle'}@virtualhq.corp
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '3px' }}>
+                      Mapped to student account: <span style={{ color: '#cbd5e1' }}>{initialData?.email || 'your-personal@email.com'}</span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.65rem', padding: '3px 8px', borderRadius: '6px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontWeight: 700, border: '1px solid rgba(34, 197, 94, 0.25)' }}>
+                    HR Provisioned
+                  </span>
                 </div>
 
                 <div className="step-actions right-align">
@@ -472,6 +514,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       <tr>
                         <td className="col-label">Employee Identification</td>
                         <td className="col-val mono" id="offerEmpId">{empId}</td>
+                      </tr>
+                      <tr>
+                        <td className="col-label">Corporate Email Allotted</td>
+                        <td className="col-val mono" style={{ color: '#0284c7', fontWeight: 600 }}>
+                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@virtualhq.corp
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="col-label">Personal Email Mapped</td>
+                        <td className="col-val mono">{initialData?.email || 'student@personal.com'}</td>
                       </tr>
                       <tr>
                         <td className="col-label">Reporting Line</td>
@@ -731,7 +783,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       <div className="id-field">
                         <span className="id-label">ALLOTTED CORPORATE EMAIL</span>
                         <span className="id-emp-role mono" style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
-                          {initialData?.corporateEmail || `${handle.trim() || 'engineer'}@virtualhq.corp`}
+                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@virtualhq.corp
                         </span>
                       </div>
                       <div className="id-field">
