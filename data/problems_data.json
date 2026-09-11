@@ -1,0 +1,2122 @@
+{
+  "roles": {
+    "Technical Support Engineer": [
+      {
+        "s_no": "1",
+        "url": "https://github.com/open-xyz/xmail/issues/10",
+        "level": "Easy",
+        "role": "Technical Support Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "10",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "2",
+        "url": "https://github.com/open-xyz/xmail/issues/8",
+        "level": "Easy",
+        "role": "Technical Support Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "8",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "3",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/3",
+        "level": "Easy",
+        "role": "Technical Support Engineer",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "3",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "4",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/231",
+        "level": "Medium",
+        "role": "Technical Support Engineer",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "231",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "5",
+        "url": "https://github.com/open-xyz/xmail/issues/10",
+        "level": "Medium",
+        "role": "Technical Support Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "10",
+        "role_heading": "Technical Support Engineer"
+      }
+    ],
+    "Frontend Engineer": [
+      {
+        "s_no": "6",
+        "url": "https://github.com/medusajs/medusa/issues/16701",
+        "level": "Medium",
+        "role": "Frontend Engineer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16701",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "7",
+        "url": "https://github.com/medusajs/medusa/issues/16668",
+        "level": "Hard",
+        "role": "Frontend Engineer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16668",
+        "role_heading": "Frontend Developer (Junior)"
+      }
+    ],
+    "Frontend Developer (Junior)": [
+      {
+        "s_no": "8",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/41",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "41",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "9",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/37",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "37",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "10",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/487",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "487",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "11",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/347",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "347",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "12",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/257",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "257",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "13",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/256",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "256",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "14",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/179",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "179",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "15",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/40",
+        "level": "Medium",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "40",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "16",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/39",
+        "level": "Medium",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "39",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "17",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/402",
+        "level": "Medium",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "402",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "18",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/38",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "38",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "19",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/518",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "518",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "20",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/371",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "371",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "21",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/235",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "235",
+        "role_heading": "Frontend Developer (Junior)"
+      }
+    ],
+    "Full Stack Developer": [
+      {
+        "s_no": "22",
+        "url": "https://github.com/medusajs/medusa/issues/16770",
+        "level": "Hard",
+        "role": "Full Stack Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16770",
+        "role_heading": "Full Stack Developer(Junior)"
+      }
+    ],
+    "Full Stack Developer (Junior)": [
+      {
+        "s_no": "23",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/222",
+        "level": "Easy",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "222",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "24",
+        "url": "https://github.com/Sayak-Bhunia/mystory/issues/19",
+        "level": "Easy",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Sayak-Bhunia/mystory",
+        "issue_no": "19",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "25",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/100",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "100",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "26",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/290",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "290",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "27",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/230",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "230",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "28",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/216",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "216",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "29",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/197",
+        "level": "Hard",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "197",
+        "role_heading": "Full Stack Developer(Junior)"
+      }
+    ],
+    "Backend Developer": [
+      {
+        "s_no": "30",
+        "url": "https://github.com/medusajs/medusa/issues/16751",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16751",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "31",
+        "url": "https://github.com/medusajs/medusa/issues/16744",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16744",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "32",
+        "url": "https://github.com/medusajs/medusa/issues/16727",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16727",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "33",
+        "url": "https://github.com/medusajs/medusa/issues/16652",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16652",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "34",
+        "url": "https://github.com/medusajs/medusa/issues/16636",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16636",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "35",
+        "url": "https://github.com/medusajs/medusa/issues/16625",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16625",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "36",
+        "url": "https://github.com/medusajs/medusa/issues/16621",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16621",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "37",
+        "url": "https://github.com/medusajs/medusa/issues/16619",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16619",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "38",
+        "url": "https://github.com/medusajs/medusa/issues/16583",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16583",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "39",
+        "url": "https://github.com/saleor/saleor/issues/19498",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "saleor/saleor",
+        "issue_no": "19498",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "40",
+        "url": "https://github.com/saleor/saleor/issues/19412",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "saleor/saleor",
+        "issue_no": "19412",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "41",
+        "url": "https://github.com/saleor/saleor/issues/19246",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "saleor/saleor",
+        "issue_no": "19246",
+        "role_heading": "Backend Developer(Junior)"
+      }
+    ],
+    "Backend Developer (Junior)": [
+      {
+        "s_no": "42",
+        "url": "https://github.com/dishamodi0910/APIVerse/issues/154",
+        "level": "Medium",
+        "role": "Backend Developer (Junior)",
+        "repo": "dishamodi0910/APIVerse",
+        "issue_no": "154",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "43",
+        "url": "https://github.com/dishamodi0910/APIVerse/issues/153",
+        "level": "Hard",
+        "role": "Backend Developer (Junior)",
+        "repo": "dishamodi0910/APIVerse",
+        "issue_no": "153",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "44",
+        "url": "https://github.com/dishamodi0910/APIVerse/issues/121",
+        "level": "Hard",
+        "role": "Backend Developer (Junior)",
+        "repo": "dishamodi0910/APIVerse",
+        "issue_no": "121",
+        "role_heading": "Backend Developer(Junior)"
+      }
+    ],
+    "Database / Auth Infrastructure Engineer": [
+      {
+        "s_no": "45",
+        "url": "https://github.com/supabase/supabase/issues/50009",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "50009",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "46",
+        "url": "https://github.com/supabase/supabase/issues/49991",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "49991",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "47",
+        "url": "https://github.com/supabase/supabase/issues/48862",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48862",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "48",
+        "url": "https://github.com/supabase/supabase/issues/48977",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48977",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "49",
+        "url": "https://github.com/supabase/supabase/issues/48918",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48918",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "50",
+        "url": "https://github.com/supabase/supabase/issues/48814",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48814",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "51",
+        "url": "https://github.com/supabase/supabase/issues/48164",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48164",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "52",
+        "url": "https://github.com/supabase/supabase/issues/45671",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "45671",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      }
+    ],
+    "Mobile App Developer (Android/iOS) (Junior)": [
+      {
+        "s_no": "53",
+        "url": "https://github.com/flutter/flutter/issues/75662",
+        "level": "Hard",
+        "role": "Mobile App Developer (Android/iOS) (Junior)",
+        "repo": "flutter/flutter",
+        "issue_no": "75662",
+        "role_heading": "Mobile App Developer (Android/iOS) (Junior)"
+      }
+    ],
+    "DevOps Engineer (Junior)": [
+      {
+        "s_no": "54",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/211",
+        "level": "Medium",
+        "role": "DevOps Engineer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "211",
+        "role_heading": "DevOps Engineer (Junior)"
+      },
+      {
+        "s_no": "55",
+        "url": "https://github.com/Yeasir0032/Discord-Clone/issues/35",
+        "level": "Medium",
+        "role": "DevOps Engineer (Junior)",
+        "repo": "Yeasir0032/Discord-Clone",
+        "issue_no": "35",
+        "role_heading": "DevOps Engineer (Junior)"
+      }
+    ],
+    "Data Analyst (Junior)": [
+      {
+        "s_no": "56",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/178",
+        "level": "Easy",
+        "role": "Data Analyst (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "178",
+        "role_heading": "Data Analyst (Junior)"
+      },
+      {
+        "s_no": "57",
+        "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/622",
+        "level": "Medium",
+        "role": "Data Analyst (Junior)",
+        "repo": "Niketkumardheeryan/ML-CaPsule",
+        "issue_no": "622",
+        "role_heading": "Data Analyst (Junior)"
+      }
+    ],
+    "Data Scientist (Associate/Junior)": [
+      {
+        "s_no": "58",
+        "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/628",
+        "level": "Medium",
+        "role": "Data Scientist (Associate/Junior)",
+        "repo": "Niketkumardheeryan/ML-CaPsule",
+        "issue_no": "628",
+        "role_heading": "Data Scientist (Associate/Junior)"
+      }
+    ],
+    "Associate Product Engineer": [
+      {
+        "s_no": "59",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/196",
+        "level": "Hard",
+        "role": "Associate Product Engineer",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "196",
+        "role_heading": "Associate Product Engineer"
+      }
+    ],
+    "Junior Systems Engineer / Systems Administrator": [
+      {
+        "s_no": "60",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/6",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "6",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "61",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/1",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "1",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "62",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/20",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "20",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "63",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/9",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "9",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "64",
+        "url": "https://github.com/open-xyz/xmail/issues/32",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "open-xyz/xmail",
+        "issue_no": "32",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "65",
+        "url": "https://github.com/open-xyz/xmail/issues/21",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "open-xyz/xmail",
+        "issue_no": "21",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "66",
+        "url": "https://github.com/Yeasir0032/Discord-Clone/issues/41",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "Yeasir0032/Discord-Clone",
+        "issue_no": "41",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "67",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/22",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "22",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "68",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/37",
+        "level": "Hard",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "37",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "69",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/15",
+        "level": "Hard",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "15",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      }
+    ],
+    "Software Development Engineer (SDE-1) / Junior Software Engineer": [
+      {
+        "s_no": "70",
+        "url": "https://github.com/open-xyz/xmail/issues/24",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "24",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "71",
+        "url": "https://github.com/open-xyz/xmail/issues/15",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "15",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "72",
+        "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/625",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "Niketkumardheeryan/ML-CaPsule",
+        "issue_no": "625",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "73",
+        "url": "https://github.com/Yeasir0032/Discord-Clone/issues/59",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "Yeasir0032/Discord-Clone",
+        "issue_no": "59",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "74",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/10",
+        "level": "Medium",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "10",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "75",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/10",
+        "level": "Medium",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "10",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "76",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/43",
+        "level": "Hard",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "43",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      }
+    ]
+  },
+  "repos": {
+    "open-xyz/xmail": [
+      {
+        "s_no": "1",
+        "url": "https://github.com/open-xyz/xmail/issues/10",
+        "level": "Easy",
+        "role": "Technical Support Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "10",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "2",
+        "url": "https://github.com/open-xyz/xmail/issues/8",
+        "level": "Easy",
+        "role": "Technical Support Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "8",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "5",
+        "url": "https://github.com/open-xyz/xmail/issues/10",
+        "level": "Medium",
+        "role": "Technical Support Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "10",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "64",
+        "url": "https://github.com/open-xyz/xmail/issues/32",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "open-xyz/xmail",
+        "issue_no": "32",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "65",
+        "url": "https://github.com/open-xyz/xmail/issues/21",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "open-xyz/xmail",
+        "issue_no": "21",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "70",
+        "url": "https://github.com/open-xyz/xmail/issues/24",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "24",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "71",
+        "url": "https://github.com/open-xyz/xmail/issues/15",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "open-xyz/xmail",
+        "issue_no": "15",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      }
+    ],
+    "Olatisunkanmi/altschool-backend-musicfy-open-source": [
+      {
+        "s_no": "3",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/3",
+        "level": "Easy",
+        "role": "Technical Support Engineer",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "3",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "60",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/6",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "6",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "61",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/1",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "1",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "74",
+        "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/10",
+        "level": "Medium",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+        "issue_no": "10",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      }
+    ],
+    "Indie-Kart/ecommerce-store": [
+      {
+        "s_no": "4",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/231",
+        "level": "Medium",
+        "role": "Technical Support Engineer",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "231",
+        "role_heading": "Technical Support Engineer"
+      },
+      {
+        "s_no": "23",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/222",
+        "level": "Easy",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "222",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "27",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/230",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "230",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "28",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/216",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "216",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "54",
+        "url": "https://github.com/Indie-Kart/ecommerce-store/issues/211",
+        "level": "Medium",
+        "role": "DevOps Engineer (Junior)",
+        "repo": "Indie-Kart/ecommerce-store",
+        "issue_no": "211",
+        "role_heading": "DevOps Engineer (Junior)"
+      }
+    ],
+    "medusajs/medusa": [
+      {
+        "s_no": "6",
+        "url": "https://github.com/medusajs/medusa/issues/16701",
+        "level": "Medium",
+        "role": "Frontend Engineer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16701",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "7",
+        "url": "https://github.com/medusajs/medusa/issues/16668",
+        "level": "Hard",
+        "role": "Frontend Engineer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16668",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "22",
+        "url": "https://github.com/medusajs/medusa/issues/16770",
+        "level": "Hard",
+        "role": "Full Stack Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16770",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "30",
+        "url": "https://github.com/medusajs/medusa/issues/16751",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16751",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "31",
+        "url": "https://github.com/medusajs/medusa/issues/16744",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16744",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "32",
+        "url": "https://github.com/medusajs/medusa/issues/16727",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16727",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "33",
+        "url": "https://github.com/medusajs/medusa/issues/16652",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16652",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "34",
+        "url": "https://github.com/medusajs/medusa/issues/16636",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16636",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "35",
+        "url": "https://github.com/medusajs/medusa/issues/16625",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16625",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "36",
+        "url": "https://github.com/medusajs/medusa/issues/16621",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16621",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "37",
+        "url": "https://github.com/medusajs/medusa/issues/16619",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16619",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "38",
+        "url": "https://github.com/medusajs/medusa/issues/16583",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "medusajs/medusa",
+        "issue_no": "16583",
+        "role_heading": "Backend Developer(Junior)"
+      }
+    ],
+    "Dezenix/frontend-reactjs": [
+      {
+        "s_no": "8",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/41",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "41",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "9",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/37",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "37",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "15",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/40",
+        "level": "Medium",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "40",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "16",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/39",
+        "level": "Medium",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "39",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "18",
+        "url": "https://github.com/Dezenix/frontend-reactjs/issues/38",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Dezenix/frontend-reactjs",
+        "issue_no": "38",
+        "role_heading": "Frontend Developer (Junior)"
+      }
+    ],
+    "Algo-Phantoms/Algo-Phantoms-Frontend": [
+      {
+        "s_no": "10",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/487",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "487",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "11",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/347",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "347",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "17",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/402",
+        "level": "Medium",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "402",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "19",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/518",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "518",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "20",
+        "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/371",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+        "issue_no": "371",
+        "role_heading": "Frontend Developer (Junior)"
+      }
+    ],
+    "Girl-Code-It/Opportunity-Calendar-Frontend": [
+      {
+        "s_no": "12",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/257",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "257",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "13",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/256",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "256",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "14",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/179",
+        "level": "Easy",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "179",
+        "role_heading": "Frontend Developer (Junior)"
+      },
+      {
+        "s_no": "21",
+        "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/235",
+        "level": "Hard",
+        "role": "Frontend Developer (Junior)",
+        "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+        "issue_no": "235",
+        "role_heading": "Frontend Developer (Junior)"
+      }
+    ],
+    "Sayak-Bhunia/mystory": [
+      {
+        "s_no": "24",
+        "url": "https://github.com/Sayak-Bhunia/mystory/issues/19",
+        "level": "Easy",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Sayak-Bhunia/mystory",
+        "issue_no": "19",
+        "role_heading": "Full Stack Developer(Junior)"
+      }
+    ],
+    "Kajol-Kumari/InfluMart": [
+      {
+        "s_no": "25",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/100",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "100",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "26",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/290",
+        "level": "Medium",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "290",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "29",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/197",
+        "level": "Hard",
+        "role": "Full Stack Developer (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "197",
+        "role_heading": "Full Stack Developer(Junior)"
+      },
+      {
+        "s_no": "56",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/178",
+        "level": "Easy",
+        "role": "Data Analyst (Junior)",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "178",
+        "role_heading": "Data Analyst (Junior)"
+      },
+      {
+        "s_no": "59",
+        "url": "https://github.com/Kajol-Kumari/InfluMart/issues/196",
+        "level": "Hard",
+        "role": "Associate Product Engineer",
+        "repo": "Kajol-Kumari/InfluMart",
+        "issue_no": "196",
+        "role_heading": "Associate Product Engineer"
+      }
+    ],
+    "saleor/saleor": [
+      {
+        "s_no": "39",
+        "url": "https://github.com/saleor/saleor/issues/19498",
+        "level": "Hard",
+        "role": "Backend Developer",
+        "repo": "saleor/saleor",
+        "issue_no": "19498",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "40",
+        "url": "https://github.com/saleor/saleor/issues/19412",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "saleor/saleor",
+        "issue_no": "19412",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "41",
+        "url": "https://github.com/saleor/saleor/issues/19246",
+        "level": "Medium",
+        "role": "Backend Developer",
+        "repo": "saleor/saleor",
+        "issue_no": "19246",
+        "role_heading": "Backend Developer(Junior)"
+      }
+    ],
+    "dishamodi0910/APIVerse": [
+      {
+        "s_no": "42",
+        "url": "https://github.com/dishamodi0910/APIVerse/issues/154",
+        "level": "Medium",
+        "role": "Backend Developer (Junior)",
+        "repo": "dishamodi0910/APIVerse",
+        "issue_no": "154",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "43",
+        "url": "https://github.com/dishamodi0910/APIVerse/issues/153",
+        "level": "Hard",
+        "role": "Backend Developer (Junior)",
+        "repo": "dishamodi0910/APIVerse",
+        "issue_no": "153",
+        "role_heading": "Backend Developer(Junior)"
+      },
+      {
+        "s_no": "44",
+        "url": "https://github.com/dishamodi0910/APIVerse/issues/121",
+        "level": "Hard",
+        "role": "Backend Developer (Junior)",
+        "repo": "dishamodi0910/APIVerse",
+        "issue_no": "121",
+        "role_heading": "Backend Developer(Junior)"
+      }
+    ],
+    "supabase/supabase": [
+      {
+        "s_no": "45",
+        "url": "https://github.com/supabase/supabase/issues/50009",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "50009",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "46",
+        "url": "https://github.com/supabase/supabase/issues/49991",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "49991",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "47",
+        "url": "https://github.com/supabase/supabase/issues/48862",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48862",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "48",
+        "url": "https://github.com/supabase/supabase/issues/48977",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48977",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "49",
+        "url": "https://github.com/supabase/supabase/issues/48918",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48918",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "50",
+        "url": "https://github.com/supabase/supabase/issues/48814",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48814",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "51",
+        "url": "https://github.com/supabase/supabase/issues/48164",
+        "level": "Hard",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "48164",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      },
+      {
+        "s_no": "52",
+        "url": "https://github.com/supabase/supabase/issues/45671",
+        "level": "Medium",
+        "role": "Database / Auth Infrastructure Engineer",
+        "repo": "supabase/supabase",
+        "issue_no": "45671",
+        "role_heading": "Database / Auth Infrastructure Engineer"
+      }
+    ],
+    "flutter/flutter": [
+      {
+        "s_no": "53",
+        "url": "https://github.com/flutter/flutter/issues/75662",
+        "level": "Hard",
+        "role": "Mobile App Developer (Android/iOS) (Junior)",
+        "repo": "flutter/flutter",
+        "issue_no": "75662",
+        "role_heading": "Mobile App Developer (Android/iOS) (Junior)"
+      }
+    ],
+    "Yeasir0032/Discord-Clone": [
+      {
+        "s_no": "55",
+        "url": "https://github.com/Yeasir0032/Discord-Clone/issues/35",
+        "level": "Medium",
+        "role": "DevOps Engineer (Junior)",
+        "repo": "Yeasir0032/Discord-Clone",
+        "issue_no": "35",
+        "role_heading": "DevOps Engineer (Junior)"
+      },
+      {
+        "s_no": "66",
+        "url": "https://github.com/Yeasir0032/Discord-Clone/issues/41",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "Yeasir0032/Discord-Clone",
+        "issue_no": "41",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "73",
+        "url": "https://github.com/Yeasir0032/Discord-Clone/issues/59",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "Yeasir0032/Discord-Clone",
+        "issue_no": "59",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      }
+    ],
+    "Niketkumardheeryan/ML-CaPsule": [
+      {
+        "s_no": "57",
+        "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/622",
+        "level": "Medium",
+        "role": "Data Analyst (Junior)",
+        "repo": "Niketkumardheeryan/ML-CaPsule",
+        "issue_no": "622",
+        "role_heading": "Data Analyst (Junior)"
+      },
+      {
+        "s_no": "58",
+        "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/628",
+        "level": "Medium",
+        "role": "Data Scientist (Associate/Junior)",
+        "repo": "Niketkumardheeryan/ML-CaPsule",
+        "issue_no": "628",
+        "role_heading": "Data Scientist (Associate/Junior)"
+      },
+      {
+        "s_no": "72",
+        "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/625",
+        "level": "Easy",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "Niketkumardheeryan/ML-CaPsule",
+        "issue_no": "625",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      }
+    ],
+    "sahil-sagwekar2652/GitHub-Automation-scripts": [
+      {
+        "s_no": "62",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/20",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "20",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "63",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/9",
+        "level": "Easy",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "9",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "67",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/22",
+        "level": "Medium",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "22",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "68",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/37",
+        "level": "Hard",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "37",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "69",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/15",
+        "level": "Hard",
+        "role": "Junior Systems Engineer / Systems Administrator",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "15",
+        "role_heading": "Junior Systems Engineer / Systems Administrator"
+      },
+      {
+        "s_no": "75",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/10",
+        "level": "Medium",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "10",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      },
+      {
+        "s_no": "76",
+        "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/43",
+        "level": "Hard",
+        "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+        "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+        "issue_no": "43",
+        "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+      }
+    ]
+  },
+  "records": [
+    {
+      "s_no": "1",
+      "url": "https://github.com/open-xyz/xmail/issues/10",
+      "level": "Easy",
+      "role": "Technical Support Engineer",
+      "repo": "open-xyz/xmail",
+      "issue_no": "10",
+      "role_heading": "Technical Support Engineer"
+    },
+    {
+      "s_no": "2",
+      "url": "https://github.com/open-xyz/xmail/issues/8",
+      "level": "Easy",
+      "role": "Technical Support Engineer",
+      "repo": "open-xyz/xmail",
+      "issue_no": "8",
+      "role_heading": "Technical Support Engineer"
+    },
+    {
+      "s_no": "3",
+      "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/3",
+      "level": "Easy",
+      "role": "Technical Support Engineer",
+      "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+      "issue_no": "3",
+      "role_heading": "Technical Support Engineer"
+    },
+    {
+      "s_no": "4",
+      "url": "https://github.com/Indie-Kart/ecommerce-store/issues/231",
+      "level": "Medium",
+      "role": "Technical Support Engineer",
+      "repo": "Indie-Kart/ecommerce-store",
+      "issue_no": "231",
+      "role_heading": "Technical Support Engineer"
+    },
+    {
+      "s_no": "5",
+      "url": "https://github.com/open-xyz/xmail/issues/10",
+      "level": "Medium",
+      "role": "Technical Support Engineer",
+      "repo": "open-xyz/xmail",
+      "issue_no": "10",
+      "role_heading": "Technical Support Engineer"
+    },
+    {
+      "s_no": "6",
+      "url": "https://github.com/medusajs/medusa/issues/16701",
+      "level": "Medium",
+      "role": "Frontend Engineer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16701",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "7",
+      "url": "https://github.com/medusajs/medusa/issues/16668",
+      "level": "Hard",
+      "role": "Frontend Engineer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16668",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "8",
+      "url": "https://github.com/Dezenix/frontend-reactjs/issues/41",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Dezenix/frontend-reactjs",
+      "issue_no": "41",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "9",
+      "url": "https://github.com/Dezenix/frontend-reactjs/issues/37",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Dezenix/frontend-reactjs",
+      "issue_no": "37",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "10",
+      "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/487",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+      "issue_no": "487",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "11",
+      "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/347",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+      "issue_no": "347",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "12",
+      "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/257",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+      "issue_no": "257",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "13",
+      "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/256",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+      "issue_no": "256",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "14",
+      "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/179",
+      "level": "Easy",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+      "issue_no": "179",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "15",
+      "url": "https://github.com/Dezenix/frontend-reactjs/issues/40",
+      "level": "Medium",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Dezenix/frontend-reactjs",
+      "issue_no": "40",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "16",
+      "url": "https://github.com/Dezenix/frontend-reactjs/issues/39",
+      "level": "Medium",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Dezenix/frontend-reactjs",
+      "issue_no": "39",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "17",
+      "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/402",
+      "level": "Medium",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+      "issue_no": "402",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "18",
+      "url": "https://github.com/Dezenix/frontend-reactjs/issues/38",
+      "level": "Hard",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Dezenix/frontend-reactjs",
+      "issue_no": "38",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "19",
+      "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/518",
+      "level": "Hard",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+      "issue_no": "518",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "20",
+      "url": "https://github.com/Algo-Phantoms/Algo-Phantoms-Frontend/issues/371",
+      "level": "Hard",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Algo-Phantoms/Algo-Phantoms-Frontend",
+      "issue_no": "371",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "21",
+      "url": "https://github.com/Girl-Code-It/Opportunity-Calendar-Frontend/issues/235",
+      "level": "Hard",
+      "role": "Frontend Developer (Junior)",
+      "repo": "Girl-Code-It/Opportunity-Calendar-Frontend",
+      "issue_no": "235",
+      "role_heading": "Frontend Developer (Junior)"
+    },
+    {
+      "s_no": "22",
+      "url": "https://github.com/medusajs/medusa/issues/16770",
+      "level": "Hard",
+      "role": "Full Stack Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16770",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "23",
+      "url": "https://github.com/Indie-Kart/ecommerce-store/issues/222",
+      "level": "Easy",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Indie-Kart/ecommerce-store",
+      "issue_no": "222",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "24",
+      "url": "https://github.com/Sayak-Bhunia/mystory/issues/19",
+      "level": "Easy",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Sayak-Bhunia/mystory",
+      "issue_no": "19",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "25",
+      "url": "https://github.com/Kajol-Kumari/InfluMart/issues/100",
+      "level": "Medium",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Kajol-Kumari/InfluMart",
+      "issue_no": "100",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "26",
+      "url": "https://github.com/Kajol-Kumari/InfluMart/issues/290",
+      "level": "Medium",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Kajol-Kumari/InfluMart",
+      "issue_no": "290",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "27",
+      "url": "https://github.com/Indie-Kart/ecommerce-store/issues/230",
+      "level": "Medium",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Indie-Kart/ecommerce-store",
+      "issue_no": "230",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "28",
+      "url": "https://github.com/Indie-Kart/ecommerce-store/issues/216",
+      "level": "Medium",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Indie-Kart/ecommerce-store",
+      "issue_no": "216",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "29",
+      "url": "https://github.com/Kajol-Kumari/InfluMart/issues/197",
+      "level": "Hard",
+      "role": "Full Stack Developer (Junior)",
+      "repo": "Kajol-Kumari/InfluMart",
+      "issue_no": "197",
+      "role_heading": "Full Stack Developer(Junior)"
+    },
+    {
+      "s_no": "30",
+      "url": "https://github.com/medusajs/medusa/issues/16751",
+      "level": "Hard",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16751",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "31",
+      "url": "https://github.com/medusajs/medusa/issues/16744",
+      "level": "Hard",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16744",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "32",
+      "url": "https://github.com/medusajs/medusa/issues/16727",
+      "level": "Hard",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16727",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "33",
+      "url": "https://github.com/medusajs/medusa/issues/16652",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16652",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "34",
+      "url": "https://github.com/medusajs/medusa/issues/16636",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16636",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "35",
+      "url": "https://github.com/medusajs/medusa/issues/16625",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16625",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "36",
+      "url": "https://github.com/medusajs/medusa/issues/16621",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16621",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "37",
+      "url": "https://github.com/medusajs/medusa/issues/16619",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16619",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "38",
+      "url": "https://github.com/medusajs/medusa/issues/16583",
+      "level": "Hard",
+      "role": "Backend Developer",
+      "repo": "medusajs/medusa",
+      "issue_no": "16583",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "39",
+      "url": "https://github.com/saleor/saleor/issues/19498",
+      "level": "Hard",
+      "role": "Backend Developer",
+      "repo": "saleor/saleor",
+      "issue_no": "19498",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "40",
+      "url": "https://github.com/saleor/saleor/issues/19412",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "saleor/saleor",
+      "issue_no": "19412",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "41",
+      "url": "https://github.com/saleor/saleor/issues/19246",
+      "level": "Medium",
+      "role": "Backend Developer",
+      "repo": "saleor/saleor",
+      "issue_no": "19246",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "42",
+      "url": "https://github.com/dishamodi0910/APIVerse/issues/154",
+      "level": "Medium",
+      "role": "Backend Developer (Junior)",
+      "repo": "dishamodi0910/APIVerse",
+      "issue_no": "154",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "43",
+      "url": "https://github.com/dishamodi0910/APIVerse/issues/153",
+      "level": "Hard",
+      "role": "Backend Developer (Junior)",
+      "repo": "dishamodi0910/APIVerse",
+      "issue_no": "153",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "44",
+      "url": "https://github.com/dishamodi0910/APIVerse/issues/121",
+      "level": "Hard",
+      "role": "Backend Developer (Junior)",
+      "repo": "dishamodi0910/APIVerse",
+      "issue_no": "121",
+      "role_heading": "Backend Developer(Junior)"
+    },
+    {
+      "s_no": "45",
+      "url": "https://github.com/supabase/supabase/issues/50009",
+      "level": "Hard",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "50009",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "46",
+      "url": "https://github.com/supabase/supabase/issues/49991",
+      "level": "Hard",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "49991",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "47",
+      "url": "https://github.com/supabase/supabase/issues/48862",
+      "level": "Hard",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "48862",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "48",
+      "url": "https://github.com/supabase/supabase/issues/48977",
+      "level": "Medium",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "48977",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "49",
+      "url": "https://github.com/supabase/supabase/issues/48918",
+      "level": "Medium",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "48918",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "50",
+      "url": "https://github.com/supabase/supabase/issues/48814",
+      "level": "Medium",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "48814",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "51",
+      "url": "https://github.com/supabase/supabase/issues/48164",
+      "level": "Hard",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "48164",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "52",
+      "url": "https://github.com/supabase/supabase/issues/45671",
+      "level": "Medium",
+      "role": "Database / Auth Infrastructure Engineer",
+      "repo": "supabase/supabase",
+      "issue_no": "45671",
+      "role_heading": "Database / Auth Infrastructure Engineer"
+    },
+    {
+      "s_no": "53",
+      "url": "https://github.com/flutter/flutter/issues/75662",
+      "level": "Hard",
+      "role": "Mobile App Developer (Android/iOS) (Junior)",
+      "repo": "flutter/flutter",
+      "issue_no": "75662",
+      "role_heading": "Mobile App Developer (Android/iOS) (Junior)"
+    },
+    {
+      "s_no": "54",
+      "url": "https://github.com/Indie-Kart/ecommerce-store/issues/211",
+      "level": "Medium",
+      "role": "DevOps Engineer (Junior)",
+      "repo": "Indie-Kart/ecommerce-store",
+      "issue_no": "211",
+      "role_heading": "DevOps Engineer (Junior)"
+    },
+    {
+      "s_no": "55",
+      "url": "https://github.com/Yeasir0032/Discord-Clone/issues/35",
+      "level": "Medium",
+      "role": "DevOps Engineer (Junior)",
+      "repo": "Yeasir0032/Discord-Clone",
+      "issue_no": "35",
+      "role_heading": "DevOps Engineer (Junior)"
+    },
+    {
+      "s_no": "56",
+      "url": "https://github.com/Kajol-Kumari/InfluMart/issues/178",
+      "level": "Easy",
+      "role": "Data Analyst (Junior)",
+      "repo": "Kajol-Kumari/InfluMart",
+      "issue_no": "178",
+      "role_heading": "Data Analyst (Junior)"
+    },
+    {
+      "s_no": "57",
+      "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/622",
+      "level": "Medium",
+      "role": "Data Analyst (Junior)",
+      "repo": "Niketkumardheeryan/ML-CaPsule",
+      "issue_no": "622",
+      "role_heading": "Data Analyst (Junior)"
+    },
+    {
+      "s_no": "58",
+      "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/628",
+      "level": "Medium",
+      "role": "Data Scientist (Associate/Junior)",
+      "repo": "Niketkumardheeryan/ML-CaPsule",
+      "issue_no": "628",
+      "role_heading": "Data Scientist (Associate/Junior)"
+    },
+    {
+      "s_no": "59",
+      "url": "https://github.com/Kajol-Kumari/InfluMart/issues/196",
+      "level": "Hard",
+      "role": "Associate Product Engineer",
+      "repo": "Kajol-Kumari/InfluMart",
+      "issue_no": "196",
+      "role_heading": "Associate Product Engineer"
+    },
+    {
+      "s_no": "60",
+      "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/6",
+      "level": "Easy",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+      "issue_no": "6",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "61",
+      "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/1",
+      "level": "Easy",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+      "issue_no": "1",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "62",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/20",
+      "level": "Easy",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "20",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "63",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/9",
+      "level": "Easy",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "9",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "64",
+      "url": "https://github.com/open-xyz/xmail/issues/32",
+      "level": "Medium",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "open-xyz/xmail",
+      "issue_no": "32",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "65",
+      "url": "https://github.com/open-xyz/xmail/issues/21",
+      "level": "Medium",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "open-xyz/xmail",
+      "issue_no": "21",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "66",
+      "url": "https://github.com/Yeasir0032/Discord-Clone/issues/41",
+      "level": "Medium",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "Yeasir0032/Discord-Clone",
+      "issue_no": "41",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "67",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/22",
+      "level": "Medium",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "22",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "68",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/37",
+      "level": "Hard",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "37",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "69",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/15",
+      "level": "Hard",
+      "role": "Junior Systems Engineer / Systems Administrator",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "15",
+      "role_heading": "Junior Systems Engineer / Systems Administrator"
+    },
+    {
+      "s_no": "70",
+      "url": "https://github.com/open-xyz/xmail/issues/24",
+      "level": "Easy",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "open-xyz/xmail",
+      "issue_no": "24",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    },
+    {
+      "s_no": "71",
+      "url": "https://github.com/open-xyz/xmail/issues/15",
+      "level": "Easy",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "open-xyz/xmail",
+      "issue_no": "15",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    },
+    {
+      "s_no": "72",
+      "url": "https://github.com/Niketkumardheeryan/ML-CaPsule/issues/625",
+      "level": "Easy",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "Niketkumardheeryan/ML-CaPsule",
+      "issue_no": "625",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    },
+    {
+      "s_no": "73",
+      "url": "https://github.com/Yeasir0032/Discord-Clone/issues/59",
+      "level": "Easy",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "Yeasir0032/Discord-Clone",
+      "issue_no": "59",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    },
+    {
+      "s_no": "74",
+      "url": "https://github.com/Olatisunkanmi/altschool-backend-musicfy-open-source/issues/10",
+      "level": "Medium",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "Olatisunkanmi/altschool-backend-musicfy-open-source",
+      "issue_no": "10",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    },
+    {
+      "s_no": "75",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/10",
+      "level": "Medium",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "10",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    },
+    {
+      "s_no": "76",
+      "url": "https://github.com/sahil-sagwekar2652/GitHub-Automation-scripts/issues/43",
+      "level": "Hard",
+      "role": "Software Development Engineer (SDE-1) / Junior Software Engineer",
+      "repo": "sahil-sagwekar2652/GitHub-Automation-scripts",
+      "issue_no": "43",
+      "role_heading": "Software Development Engineer (SDE-1) / Junior Software Engineer"
+    }
+  ]
+}
