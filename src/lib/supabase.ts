@@ -2,15 +2,18 @@ import { createClient } from '@supabase/supabase-js';
 import type { PullRequest, EmployeeState } from '../types';
 import { PROBLEMS_DATASET } from './dataset';
 
-// Supabase Connection Credentials
+// Supabase Modern API Connection Credentials
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_key';
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY 
+  || import.meta.env.VITE_SUPABASE_ANON_KEY 
+  || 'sb_publishable_dummy_key';
 
 export const isSupabaseConfigured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_URL && 
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY)
 );
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Supabase Authentication Service (GitHub OAuth & Enterprise Credentials)
