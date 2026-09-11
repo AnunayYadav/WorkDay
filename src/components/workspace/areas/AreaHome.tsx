@@ -47,6 +47,18 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
 
   const lvl = (activeTask?.level || 'Easy').toLowerCase();
 
+  // Safe date formatter that handles both ISO strings and legacy pre-formatted strings
+  const formatDueDate = (dateStr: string) => {
+    if (!dateStr) return 'End of Sprint';
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime()) && d.getFullYear() > 2020) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    } catch (_) {}
+    return dateStr;
+  };
+
   return (
     <section className="workspace-area active" id="areaHome">
       <div className="area-header">
@@ -266,7 +278,7 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
                   flexWrap: 'wrap'
                 }}>
                   {task.dueDate && (
-                    <span>📅 Due: <strong style={{ color: '#fb923c' }}>{task.dueDate}</strong></span>
+                    <span>📅 Due: <strong style={{ color: '#fb923c' }}>{formatDueDate(task.dueDate)}</strong></span>
                   )}
                   <span className="mono">Assigned: {new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                 </div>

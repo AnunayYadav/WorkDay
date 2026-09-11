@@ -32,6 +32,19 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
 
   const lvl = (activeTask?.level || 'Easy').toLowerCase();
 
+  // Safe date formatter that handles both ISO strings and legacy pre-formatted strings
+  const formatDueDate = (dateStr: string) => {
+    if (!dateStr) return 'End of Sprint';
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime()) && d.getFullYear() > 2020) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    } catch (_) {}
+    // If parsing failed or year is wrong, return the raw string
+    return dateStr;
+  };
+
   return (
     <section className="workspace-area active" id="areaTasks">
       <div className="area-header">
@@ -291,7 +304,7 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                           <span>👤 Delegated by: <strong style={{ color: '#e4e4e7' }}>{task.assignedByName || task.assignedByEmpId}</strong></span>
                           {task.dueDate && (
-                            <span>📅 Due: <strong style={{ color: '#fb923c' }}>{task.dueDate}</strong></span>
+                            <span>📅 Due: <strong style={{ color: '#fb923c' }}>{formatDueDate(task.dueDate)}</strong></span>
                           )}
                         </div>
                         <span className="mono">
@@ -468,7 +481,7 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                           <span>👤 Delegated by: <strong style={{ color: '#e4e4e7' }}>{task.assignedByName || task.assignedByEmpId}</strong></span>
                           {task.dueDate && (
-                            <span>📅 Due: <strong style={{ color: '#fb923c' }}>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                            <span>📅 Due: <strong style={{ color: '#fb923c' }}>{formatDueDate(task.dueDate)}</strong></span>
                           )}
                         </div>
                         <span className="mono">

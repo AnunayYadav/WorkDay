@@ -253,7 +253,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       description: taskDesc.trim() || 'Complete assigned acceptance criteria and link pull request.',
       priority: taskPriority,
       status: 'todo',
-      dueDate: dueFormatted,
+      dueDate: taskDueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       repo: taskRepo,
       issueNo: `#T-${Math.floor(100 + Math.random() * 900)}`
     });
@@ -653,7 +653,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                       </td>
                       <td style={{ padding: '0.65rem 0.5rem' }}>
                         <span className="mono" style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
-                          {t.dueDate || 'Next Sprint'}
+                          {t.dueDate ? formatDisplayDeadline(t.dueDate) : 'Next Sprint'}
                         </span>
                       </td>
                       <td style={{ padding: '0.65rem 0.5rem' }}>
