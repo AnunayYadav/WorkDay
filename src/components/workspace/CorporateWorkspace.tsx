@@ -42,7 +42,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   onSignOut
 }) => {
   const { showToast } = useToast();
-  const [currentRole, setCurrentRole] = useState<UserRoleType>(employee.userType || 'employee');
+  const currentRole: UserRoleType = employee.userType || 'employee';
   const [activeArea, setActiveArea] = useState<TabType>(() => {
     if (employee.userType === 'manager') return 'manager_dashboard';
     if (employee.userType === 'hr') return 'hr_dashboard';
@@ -167,20 +167,6 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     const refreshed = await CloudStorage.listPullRequests();
     setPullRequests(refreshed);
     showToast({ title: 'Changes Requested', message: `Returned ${pr.id} to author with feedback.`, type: 'info' });
-  };
-
-  const handleRoleSwitch = (newRole: UserRoleType) => {
-    setCurrentRole(newRole);
-    employee.userType = newRole;
-    CloudStorage.saveEmployee({ ...employee, userType: newRole }).catch(() => {});
-    if (newRole === 'manager') setActiveArea('manager_dashboard');
-    else if (newRole === 'hr') setActiveArea('hr_dashboard');
-    else setActiveArea('home');
-    showToast({
-      title: 'Privilege Level Updated',
-      message: `Active clearance switched to ${newRole.toUpperCase()} mode.`,
-      type: 'info'
-    });
   };
 
   const areaTitles: Record<TabType, string> = {
@@ -712,70 +698,61 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               {employee.companyName || 'Stripe'}
             </span>
 
-            {/* Interactive 3-Tier Role Switcher */}
+            {/* Authenticated Privilege Clearance Badge */}
             <div style={{
               display: 'inline-flex',
-              background: 'rgba(255, 255, 255, 0.04)',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.25rem 0.65rem',
               borderRadius: '6px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              padding: '2px'
-            }}>
-              {[
-                {
-                  role: 'employee' as UserRoleType,
-                  label: 'Employee',
-                  icon: (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="16 18 22 12 16 6" />
-                      <polyline points="8 6 2 12 8 18" />
-                    </svg>
-                  )
-                },
-                {
-                  role: 'manager' as UserRoleType,
-                  label: 'Manager',
-                  icon: (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  )
-                },
-                {
-                  role: 'hr' as UserRoleType,
-                  label: 'HR',
-                  icon: (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                      <path d="m9 12 2 2 4-4" />
-                    </svg>
-                  )
-                }
-              ].map(item => (
-                <button
-                  key={item.role}
-                  type="button"
-                  onClick={() => handleRoleSwitch(item.role)}
-                  style={{
-                    padding: '0.2rem 0.55rem',
-                    fontSize: '0.7rem',
-                    fontWeight: currentRole === item.role ? 600 : 400,
-                    color: currentRole === item.role ? '#ffffff' : '#71717a',
-                    background: currentRole === item.role ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-                    borderRadius: '4px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem'
-                  }}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </button>
-              ))}
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+              background: currentRole === 'manager'
+                ? 'rgba(59, 130, 246, 0.12)'
+                : currentRole === 'hr'
+                  ? 'rgba(245, 158, 11, 0.12)'
+                  : 'rgba(16, 185, 129, 0.12)',
+              border: `1px solid ${
+                currentRole === 'manager'
+                  ? 'rgba(59, 130, 246, 0.3)'
+                  : currentRole === 'hr'
+                    ? 'rgba(245, 158, 11, 0.3)'
+                    : 'rgba(16, 185, 129, 0.3)'
+              }`,
+              color: currentRole === 'manager'
+                ? '#60a5fa'
+                : currentRole === 'hr'
+                  ? '#fbbf24'
+                  : '#34d399'
+            }} title={`Authenticated Access Clearance: ${currentRole.toUpperCase()}`}>
+              {currentRole === 'manager' ? (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  <span>Manager</span>
+                </>
+              ) : currentRole === 'hr' ? (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  <span>HR Lead</span>
+                </>
+              ) : (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6" />
+                    <polyline points="8 6 2 12 8 18" />
+                  </svg>
+                  <span>Employee</span>
+                </>
+              )}
             </div>
 
             {employee.corporateEmail && (
