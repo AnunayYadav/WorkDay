@@ -654,8 +654,13 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
               Direct Reports &amp; Engineers
             </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '240px', overflowY: 'auto' }}>
-              {squadMembers.map(member => (
+            {squadMembers.length === 0 ? (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#71717a', fontSize: '0.8rem' }}>
+                No engineers have registered under {employee.companyName || 'this company'} yet. When real engineers sign up and select {employee.companyName || 'this company'}, they will appear here.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '240px', overflowY: 'auto' }}>
+                {squadMembers.map(member => (
                 <div
                   key={member.empId}
                   style={{
@@ -723,6 +728,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                 </div>
               ))}
             </div>
+          )}
           </div>
         </div>
       </div>
@@ -983,11 +989,15 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                   }}
                   required
                 >
-                  {squadMembers.map(m => (
-                    <option key={m.empId} value={m.empId}>
-                      {m.fullName} ({m.selectedRole?.title || 'Engineer'})
-                    </option>
-                  ))}
+                  {squadMembers.length === 0 ? (
+                    <option value="">No registered engineers at {employee.companyName || 'this company'} yet</option>
+                  ) : (
+                    squadMembers.map(m => (
+                      <option key={m.empId} value={m.empId}>
+                        {m.fullName} ({m.selectedRole?.title || 'Engineer'})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

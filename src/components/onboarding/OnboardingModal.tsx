@@ -213,7 +213,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [companyEmployees, setCompanyEmployees] = useState<EmployeeState[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [selectedSquadEmpIds, setSelectedSquadEmpIds] = useState<string[]>([]);
-  const [seedingDemoSquad, setSeedingDemoSquad] = useState(false);
 
   const fetchCompanyEmployees = async () => {
     if (!activeCompanyName) return;
@@ -253,13 +252,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   const deselectAllSquad = () => {
     setSelectedSquadEmpIds([]);
-  };
-
-  const handleSeedSquad = async () => {
-    setSeedingDemoSquad(true);
-    await CloudStorage.seedCompanyEmployees(activeCompanyName, activeCompanyDomain);
-    await fetchCompanyEmployees();
-    setSeedingDemoSquad(false);
   };
 
   const DIALOGUES: Record<number, string> = {
@@ -1471,32 +1463,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                           </svg>
                         </div>
                         <h4 style={{ color: '#ffffff', fontSize: '0.96rem', fontWeight: 600, margin: 0 }}>
-                          No Engineers Registered at {activeCompanyName} Yet
+                          No Registered Engineers at {activeCompanyName} Yet
                         </h4>
-                        <p style={{ color: '#8e8e93', fontSize: '0.78rem', maxWidth: '440px', margin: '0.4rem auto 1.25rem', lineHeight: 1.45 }}>
-                          According to the corporate database, no employee accounts have joined {activeCompanyName} yet. New employees selecting {activeCompanyName} during onboarding will automatically populate your squad. You can also provision a sample squad in the database right now:
+                        <p style={{ color: '#8e8e93', fontSize: '0.8rem', maxWidth: '440px', margin: '0.5rem auto 0', lineHeight: 1.5 }}>
+                          There are currently no registered engineers at {activeCompanyName}. Once real employees create an account and select {activeCompanyName}, they will automatically appear here in your squad roster for sprint delegation and PR reviews.
                         </p>
-                        <button
-                          type="button"
-                          onClick={handleSeedSquad}
-                          disabled={seedingDemoSquad}
-                          style={{
-                            padding: '0.55rem 1.1rem',
-                            borderRadius: '8px',
-                            background: '#ffffff',
-                            color: '#000000',
-                            border: 'none',
-                            fontWeight: 600,
-                            fontSize: '0.8rem',
-                            cursor: seedingDemoSquad ? 'not-allowed' : 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            opacity: seedingDemoSquad ? 0.7 : 1
-                          }}
-                        >
-                          {seedingDemoSquad ? 'Provisioning Engineers into Database...' : `+ Provision Demo Squad for ${activeCompanyName}`}
-                        </button>
                       </div>
                     )}
                   </div>
