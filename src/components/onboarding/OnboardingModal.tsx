@@ -335,45 +335,41 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   </div>
                 </div>
 
-                {/* Live Corporate Email Allotment Card in HR Onboarding */}
+                {/* Minimalist Corporate Email Preview Card */}
                 <div style={{
                   padding: '0.85rem 1rem',
-                  borderRadius: '12px',
-                  background: 'rgba(56, 189, 248, 0.05)',
-                  border: '1px dashed rgba(56, 189, 248, 0.25)',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
                   marginTop: '0.75rem',
-                  marginBottom: '1rem',
+                  marginBottom: '1.25rem',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.85rem'
+                  justifyContent: 'space-between',
+                  gap: '1rem'
                 }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '14px',
-                    flexShrink: 0
-                  }}>
-                    💼
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                      Official Company Email To Be Allotted
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.68rem', color: '#71717a', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      Allotted Corporate Email
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#38bdf8', fontFamily: 'monospace', fontWeight: 700, marginTop: '2px', wordBreak: 'break-all' }}>
+                    <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 600, marginTop: '2px', wordBreak: 'break-all' }}>
                       {handle.trim() || 'your.handle'}@virtualhq.corp
                     </div>
-                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '3px' }}>
-                      Mapped to student account: <span style={{ color: '#cbd5e1' }}>{initialData?.email || 'your-personal@email.com'}</span>
+                    <div style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '2px' }}>
+                      Primary student email: <span style={{ color: '#a1a1aa' }}>{initialData?.email || 'your-personal@email.com'}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: '0.65rem', padding: '3px 8px', borderRadius: '6px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontWeight: 700, border: '1px solid rgba(34, 197, 94, 0.25)' }}>
-                    HR Provisioned
+                  <span style={{
+                    fontSize: '0.66rem',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    color: '#d4d4d8',
+                    fontWeight: 500,
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Auto-Provisioned
                   </span>
                 </div>
 
