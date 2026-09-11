@@ -328,14 +328,18 @@ export const CloudStorage = {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !data?.user) {
         try {
           localStorage.removeItem('vhq_active_emp');
           sessionStorage.removeItem('vhq_active_emp');
+          if (userErr?.message?.includes('token') || userErr?.status === 400) {
+            await supabase.auth.signOut().catch(() => {});
+          }
         } catch (_) {}
         return null;
       }
+      const user = data.user;
 
       // Query live profiles ordered by latest update (avoids single/maybeSingle multi-row crash)
       const { data: rows, error } = await supabase
@@ -486,34 +490,63 @@ export const CloudStorage = {
     return true;
   },
 
-  async listProfiles(): Promise<EmployeeState[]> {
+  async listProfiles(companyName?: string, roleFilter?: UserRoleType | 'all'): Promise<EmployeeState[]> {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('profiles')
           .select('*')
           .order('created_at', { ascending: false });
 
+        if (companyName && companyName !== 'all') {
+          const trimmed = companyName.trim();
+          if (trimmed.toLowerCase() === 'stripe') {
+            query = query.or('company_name.ilike.stripe,company_name.is.null,company_name.eq.');
+          } else if (trimmed.toLowerCase().includes('google')) {
+            query = query.ilike('company_name', '%google%');
+          } else {
+            query = query.ilike('company_name', `%${trimmed}%`);
+          }
+        }
+
+        if (roleFilter === 'employee') {
+          query = query.or('user_type.eq.employee,user_type.eq.student,user_type.is.null');
+        } else if (roleFilter && roleFilter !== 'all') {
+          query = query.eq('user_type', roleFilter);
+        }
+
+        const { data, error } = await query;
+
         if (!error && data) {
           const allRoles = Object.values(PROBLEMS_DATASET.DEPARTMENT_ROLES).flat() as any[];
           return data.map((row: any) => {
-            const role = allRoles.find((r: any) => r.title === row.role_title) || allRoles[0];
-            const compDomain = row.company_domain || 'stripe.corp';
+            const matchedRole = allRoles.find((r: any) => r.title === row.role_title);
+            const role = matchedRole || {
+              id: `role_${row.id || Math.random()}`,
+              title: row.role_title || 'Software Engineer',
+              level: row.role_level || 'LEVEL 1 · JUNIOR',
+              desc: 'Contributes to engineering sprint deliverables and production architecture.',
+              tags: ['Engineering', 'Code Review', 'Sprint Deliverables'],
+              manager: { name: 'Squad Lead', title: 'Engineering Manager', initials: 'EM', quote: '' },
+              teammates: [],
+              problems: []
+            };
+            const compDomain = row.company_domain || (row.company_name ? `${row.company_name.toLowerCase().replace(/[^a-z0-9]/g, '')}.corp` : 'stripe.corp');
             return {
-              fullName: row.full_name,
-              preferredName: row.preferred_name,
-              handle: row.handle,
-              empId: row.emp_id,
-              department: row.department,
+              fullName: row.full_name || 'Engineering Recruit',
+              preferredName: row.preferred_name || (row.full_name ? row.full_name.split(' ')[0] : 'Engineer'),
+              handle: row.handle || 'engineer',
+              empId: row.emp_id || `WD-${Math.floor(1000 + Math.random() * 9000)}`,
+              department: row.department || 'engineering',
               selectedRole: role,
               signatureDataUrl: row.signature_url || '',
               isSigned: Boolean(row.is_signed),
               currentStep: 5,
               email: row.email,
-              corporateEmail: row.corporate_email || `${row.handle}@${compDomain}`,
-              githubUsername: row.github_username,
+              corporateEmail: row.corporate_email || `${row.handle || 'engineer'}@${compDomain}`,
+              githubUsername: row.github_username || row.handle || '',
               avatarUrl: row.avatar_url || (row.github_username ? `https://github.com/${row.github_username}.png` : ''),
-              authProvider: row.auth_provider,
+              authProvider: row.auth_provider || 'email',
               userId: row.user_id,
               userType: (row.user_type as UserRoleType) || 'employee',
               companyName: row.company_name || 'Stripe',
@@ -527,6 +560,72 @@ export const CloudStorage = {
       }
     }
     return [];
+  },
+
+  async seedCompanyEmployees(companyName: string, companyDomain?: string): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
+    try {
+      const domain = companyDomain || (companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.corp');
+      const cleanComp = companyName.trim();
+
+      const sampleDevs = [
+        {
+          name: 'Sarah Chen',
+          preferred: 'Sarah',
+          handle: 'sarah.chen',
+          dept: 'engineering',
+          role: 'Full Stack Engineer',
+          level: 'LEVEL 2 · MID-LEVEL',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+        },
+        {
+          name: 'Marcus Vance',
+          preferred: 'Marcus',
+          handle: 'marcus.vance',
+          dept: 'engineering',
+          role: 'Systems & Backend Engineer',
+          level: 'LEVEL 2 · MID-LEVEL',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
+        },
+        {
+          name: 'Aaliyah Patel',
+          preferred: 'Aaliyah',
+          handle: 'aaliyah.patel',
+          dept: 'engineering',
+          role: 'Frontend & UI Engineer',
+          level: 'LEVEL 1 · ASSOCIATE',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
+        }
+      ];
+
+      const rowsToInsert = sampleDevs.map((dev, idx) => ({
+        emp_id: `WD-${cleanComp.slice(0, 3).toUpperCase()}-${101 + idx}`,
+        full_name: dev.name,
+        preferred_name: dev.preferred,
+        handle: dev.handle,
+        department: dev.dept,
+        role_title: dev.role,
+        role_level: dev.level,
+        company_name: cleanComp,
+        company_domain: domain,
+        corporate_email: `${dev.handle}@${domain}`,
+        user_type: 'employee',
+        avatar_url: dev.avatar,
+        total_xp: 240 + idx * 60,
+        is_signed: true,
+        created_at: new Date(Date.now() - (idx + 1) * 3600000).toISOString()
+      }));
+
+      const { error } = await supabase.from('profiles').insert(rowsToInsert);
+      if (error) {
+        console.error('[Supabase Cloud] Error seeding demo employees:', error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[Supabase Cloud] Seed exception:', err);
+      return false;
+    }
   },
 
   async listPullRequests(): Promise<PullRequest[]> {
@@ -811,23 +910,29 @@ export const CloudStorage = {
   subscribeToEmployeeProgress(empId: string, onUpdate: (payload: any) => void) {
     if (!isSupabaseConfigured) return { unsubscribe: () => {} };
 
-    const channel = supabase
-      .channel(`public:employee_progress:${empId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'employee_progress',
-        filter: `emp_id=eq.${empId}`
-      }, payload => {
-        onUpdate(payload);
-      })
-      .subscribe();
+    try {
+      const channelId = `pub_emp_prog_${empId}_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = supabase
+        .channel(channelId)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'employee_progress',
+          filter: `emp_id=eq.${empId}`
+        }, payload => {
+          onUpdate(payload);
+        })
+        .subscribe();
 
-    return {
-      unsubscribe: () => {
-        supabase.removeChannel(channel);
-      }
-    };
+      return {
+        unsubscribe: () => {
+          try { supabase.removeChannel(channel); } catch (_) {}
+        }
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime] Could not subscribe to employee progress:', e);
+      return { unsubscribe: () => {} };
+    }
   },
 
   /**
@@ -836,31 +941,42 @@ export const CloudStorage = {
   subscribeToPullRequests(onUpdate: (payload: any) => void) {
     if (!isSupabaseConfigured) return { unsubscribe: () => {} };
 
-    const channel = supabase
-      .channel('public:pull_requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pull_requests' }, payload => {
-        onUpdate(payload);
-      })
-      .subscribe();
+    try {
+      const channelId = `pub_prs_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = supabase
+        .channel(channelId)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pull_requests' }, payload => {
+          onUpdate(payload);
+        })
+        .subscribe();
 
-    return {
-      unsubscribe: () => {
-        supabase.removeChannel(channel);
-      }
-    };
+      return {
+        unsubscribe: () => {
+          try { supabase.removeChannel(channel); } catch (_) {}
+        }
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime] Could not subscribe to pull requests:', e);
+      return { unsubscribe: () => {} };
+    }
   },
 
   /**
    * Real Meetings Service connected to Supabase
    */
-  async listMeetings(empId: string): Promise<any[]> {
+  async listMeetings(empId?: string): Promise<any[]> {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('meetings')
           .select('*')
-          .eq('emp_id', empId)
           .order('created_at', { ascending: false });
+
+        if (empId) {
+          query = query.or(`emp_id.eq.${empId},emp_id.eq.all`);
+        }
+
+        const { data, error } = await query;
 
         if (!error && data) {
           return data;
@@ -869,7 +985,8 @@ export const CloudStorage = {
     }
 
     try {
-      const stored = localStorage.getItem(`vhq_meetings_${empId}`);
+      const key = empId ? `vhq_meetings_${empId}` : 'vhq_meetings_all';
+      const stored = localStorage.getItem(key) || localStorage.getItem('vhq_meetings_all');
       if (stored) return JSON.parse(stored);
     } catch (_) {}
 
@@ -1022,51 +1139,104 @@ export const CloudStorage = {
     const isChannel = threadId.startsWith('#');
     const canonical = isChannel ? threadId : getCanonicalThreadId(empId, threadId);
 
-    const channelName = `rt_msg_${canonical.replace(/[^a-zA-Z0-9_]/g, '_')}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages'
-        },
-        (payload) => {
-          const row = payload.new as any;
-          if (row.thread_id === canonical || row.thread_id === threadId) {
-            onMessage({
-              id: row.id,
-              sender: row.sender_name,
-              text: row.text,
-              isMe: row.emp_id === empId,
-              time: new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              empId: row.emp_id,
-              threadId: row.thread_id,
-              createdAt: row.created_at
-            });
+    try {
+      const channelName = `pub_msg_${canonical.replace(/[^a-zA-Z0-9_]/g, '_')}_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages'
+          },
+          (payload) => {
+            const row = payload.new as any;
+            if (row.thread_id === canonical || row.thread_id === threadId) {
+              onMessage({
+                id: row.id,
+                sender: row.sender_name,
+                text: row.text,
+                isMe: row.emp_id === empId,
+                time: new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                empId: row.emp_id,
+                threadId: row.thread_id,
+                createdAt: row.created_at
+              });
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        try { supabase.removeChannel(channel); } catch (_) {}
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime] Messages sub error:', e);
+      return () => {};
+    }
+  },
+
+  /**
+   * Subscribe to all broadcast & direct squad messages for live management console
+   */
+  subscribeToSquadMessages(onMessage: (msg: any) => void): () => void {
+    if (!isSupabaseConfigured) return () => {};
+    try {
+      const channelName = `pub_squad_msg_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages'
+          },
+          (payload) => {
+            const row = payload.new as any;
+            if (row) {
+              onMessage({
+                id: row.id,
+                sender: row.sender_name,
+                text: row.text,
+                empId: row.emp_id,
+                threadId: row.thread_id,
+                time: new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                createdAt: row.created_at
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try { supabase.removeChannel(channel); } catch (_) {}
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime] Squad messages sub error:', e);
+      return () => {};
+    }
   },
 
   subscribeToMeetings(onUpdate: () => void): () => void {
     if (!isSupabaseConfigured) return () => {};
-    const channel = supabase
-      .channel('rt_meetings_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
-        onUpdate();
-      })
-      .subscribe();
+    try {
+      const channelId = `pub_meetings_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = supabase
+        .channel(channelId)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => {
+          onUpdate();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        try { supabase.removeChannel(channel); } catch (_) {}
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime] Meetings sub error:', e);
+      return () => {};
+    }
   },
 
   /**
@@ -1185,18 +1355,40 @@ export const CloudStorage = {
     return true;
   },
 
+  async deleteAssignedTask(taskId: string): Promise<boolean> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('tasks').delete().eq('id', taskId);
+      } catch (_) {}
+    }
+    try {
+      const stored = localStorage.getItem('vhq_tasks');
+      if (stored) {
+        const list = (JSON.parse(stored) as TaskItem[]).filter(t => t.id !== taskId);
+        localStorage.setItem('vhq_tasks', JSON.stringify(list));
+      }
+    } catch (_) {}
+    return true;
+  },
+
   subscribeToTasks(onUpdate: () => void): () => void {
     if (!isSupabaseConfigured) return () => {};
-    const channel = supabase
-      .channel('rt_tasks_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        onUpdate();
-      })
-      .subscribe();
+    try {
+      const channelId = `pub_tasks_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = supabase
+        .channel(channelId)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+          onUpdate();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        try { supabase.removeChannel(channel); } catch (_) {}
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime] Tasks sub error:', e);
+      return () => {};
+    }
   },
 
   /**

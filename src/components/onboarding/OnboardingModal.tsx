@@ -42,17 +42,132 @@ function generateSvgSignature(strokes: Array<Array<{ x: number; y: number }>>, w
   return `data:image/svg+xml;utf8,${encodeURIComponent(cleanSvg)}`;
 }
 
+export const MANAGER_ROLES: DepartmentRole[] = [
+  {
+    id: 'mgr_core_lead',
+    title: 'Engineering Manager · Core Systems',
+    level: 'LEVEL M1 · SQUAD LEAD',
+    desc: 'Oversees engineering squad velocity, code review merge approvals, sprint ticket assignments, and technical architecture.',
+    tags: ['Sprint Planning', 'PR Approvals', 'Architecture', 'Team Velocity'],
+    manager: {
+      name: 'Elena Rostova',
+      title: 'VP of Engineering',
+      initials: 'ER',
+      quote: 'Leadership is about unblocking your squad and shipping high-leverage systems with velocity and discipline.'
+    },
+    teammates: [],
+    problems: []
+  },
+  {
+    id: 'mgr_tech_lead',
+    title: 'Technical Lead Manager · Frontend & Web',
+    level: 'LEVEL M1 · TECH LEAD',
+    desc: 'Steers web design systems, client-side performance, frontend architecture, and junior/senior engineer mentorship.',
+    tags: ['Design Systems', 'React/TypeScript', 'Code Quality', 'Mentorship'],
+    manager: {
+      name: 'David Singleton',
+      title: 'Chief Technology Officer',
+      initials: 'DS',
+      quote: 'Great technical managers turn ambiguous specifications into rock-solid software architecture.'
+    },
+    teammates: [],
+    problems: []
+  },
+  {
+    id: 'mgr_infra_lead',
+    title: 'Platform & Infrastructure Manager',
+    level: 'LEVEL M2 · STAFF LEAD',
+    desc: 'Directs cloud infrastructure, Kubernetes orchestration, zero-downtime deployments, and SRE incident response pipelines.',
+    tags: ['Kubernetes', 'Cloud Infra', 'SRE/Incident Ops', 'Security Audit'],
+    manager: {
+      name: 'Kavita Patel',
+      title: 'Head of Infrastructure',
+      initials: 'KP',
+      quote: 'Resilient distributed systems are the bedrock of our company scalability.'
+    },
+    teammates: [],
+    problems: []
+  },
+  {
+    id: 'mgr_director',
+    title: 'Director of Engineering · Enterprise Platform',
+    level: 'LEVEL M3 · DIRECTOR',
+    desc: 'Coordinates multi-squad technical roadmaps, manager 1-on-1s, engineering budget allocation, and executive alignment.',
+    tags: ['Roadmaps', 'Multi-Squad Governance', 'Executive Strategy', 'Headcount'],
+    manager: {
+      name: 'Patrick Collison',
+      title: 'Chief Executive Officer',
+      initials: 'PC',
+      quote: 'High agency leadership and relentless operational execution define our technical frontier.'
+    },
+    teammates: [],
+    problems: []
+  }
+];
+
+export const HR_ROLES: DepartmentRole[] = [
+  {
+    id: 'hr_people_ops',
+    title: 'People Operations & Onboarding Lead',
+    level: 'LEVEL HR1 · LEAD',
+    desc: 'Directs corporate employee onboarding, verified digital contract execution, corporate compliance, and team culture.',
+    tags: ['Onboarding', 'Compliance', 'Contracts', 'Employee Experience'],
+    manager: {
+      name: 'Claire Hughes Johnson',
+      title: 'Chief Operating Officer',
+      initials: 'CH',
+      quote: 'Exceptional organizations are built on transparent culture, high trust, and meticulous people operations.'
+    },
+    teammates: [],
+    problems: []
+  },
+  {
+    id: 'hr_talent_partner',
+    title: 'Strategic Talent & Headcount Partner',
+    level: 'LEVEL HR2 · SENIOR',
+    desc: 'Manages engineering recruitment, talent compensation bands, offer letter issuances, and squad headcount expansion.',
+    tags: ['Headcount Planning', 'Compensation Bands', 'Talent Acquisition', 'RSUs'],
+    manager: {
+      name: 'Nathaniel Reed',
+      title: 'VP of Talent & Culture',
+      initials: 'NR',
+      quote: 'Attracting and retaining top tier engineering talent is our highest competitive advantage.'
+    },
+    teammates: [],
+    problems: []
+  },
+  {
+    id: 'hr_director_people',
+    title: 'Director of People & Corporate Governance',
+    level: 'LEVEL HR3 · DIRECTOR',
+    desc: 'Architects enterprise governance, equity structures, employee performance review cycles, and labor law compliance.',
+    tags: ['Corporate Governance', 'Legal Compliance', 'Global HR', 'Executive Leadership'],
+    manager: {
+      name: 'Patrick Collison',
+      title: 'Chief Executive Officer',
+      initials: 'PC',
+      quote: 'We operate at global scale with uncompromising standards of operational excellence.'
+    },
+    teammates: [],
+    problems: []
+  }
+];
+
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
   onClose,
   onComplete,
   initialData
 }) => {
+  const userRole: 'employee' | 'manager' | 'hr' = initialData?.userType || 'employee';
+  const isManager = userRole === 'manager';
+  const isHr = userRole === 'hr';
+
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState(initialData?.fullName || '');
   const [preferredName, setPreferredName] = useState(initialData?.preferredName || '');
   const [handle, setHandle] = useState(initialData?.handle || '');
-  const [empId, setEmpId] = useState(initialData?.empId || `WD-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [empId, setEmpId] = useState(initialData?.empId || (isManager ? `WD-MGR-${Math.floor(1000 + Math.random() * 9000)}` : isHr ? `WD-HR-${Math.floor(1000 + Math.random() * 9000)}` : `WD-${Math.floor(1000 + Math.random() * 9000)}`));
   
   // Dynamic Companies from Supabase
   const [companies, setCompanies] = useState<CompanyPreset[]>(PRESET_COMPANIES);
@@ -94,21 +209,114 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     ? (customCompanyDomain.trim().toLowerCase() || 'stripe.corp')
     : (activePreset?.domain || 'stripe.corp');
 
+  // Live direct reports / employees from database for this company
+  const [companyEmployees, setCompanyEmployees] = useState<EmployeeState[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [selectedSquadEmpIds, setSelectedSquadEmpIds] = useState<string[]>([]);
+  const [seedingDemoSquad, setSeedingDemoSquad] = useState(false);
+
+  const fetchCompanyEmployees = async () => {
+    if (!activeCompanyName) return;
+    setLoadingEmployees(true);
+    try {
+      const list = await CloudStorage.listProfiles(activeCompanyName, 'employee');
+      setCompanyEmployees(list || []);
+    } catch {
+      setCompanyEmployees([]);
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompanyEmployees();
+  }, [activeCompanyName, step]);
+
+  // Select all employees by default when company employees are fetched
+  useEffect(() => {
+    if (companyEmployees && companyEmployees.length > 0) {
+      setSelectedSquadEmpIds(companyEmployees.map(e => e.empId));
+    } else {
+      setSelectedSquadEmpIds([]);
+    }
+  }, [companyEmployees]);
+
+  const toggleSquadMember = (empId: string) => {
+    setSelectedSquadEmpIds(prev =>
+      prev.includes(empId) ? prev.filter(id => id !== empId) : [...prev, empId]
+    );
+  };
+
+  const selectAllSquad = () => {
+    setSelectedSquadEmpIds(companyEmployees.map(e => e.empId));
+  };
+
+  const deselectAllSquad = () => {
+    setSelectedSquadEmpIds([]);
+  };
+
+  const handleSeedSquad = async () => {
+    setSeedingDemoSquad(true);
+    await CloudStorage.seedCompanyEmployees(activeCompanyName, activeCompanyDomain);
+    await fetchCompanyEmployees();
+    setSeedingDemoSquad(false);
+  };
+
   const DIALOGUES: Record<number, string> = {
-    1: `"Welcome to WorkDay. Today marks Day 1 of your corporate journey at ${activeCompanyName}. Let's establish your company affiliation, employee identity, and corporate handle."`,
-    2: `"Every engineer at ${activeCompanyName} drives direct product velocity. Select the department and specialization track that fits your technical ambitions."`,
-    3: `"Here is your official Corporate Appointment Letter for ${activeCompanyName}. Review the performance benchmarks and execute your handwritten virtual signature below."`,
-    4: `"Meet your Engineering Director and assigned squad. Your daily standups and code reviews will be coordinated directly through this team."`,
-    5: `"Your smartcard credentials and Level 1 clearance have been provisioned in the enterprise directory. Step inside your virtual office when you’re ready."`
+    1: isManager
+      ? `"Welcome to WorkDay. You are onboarding as an Engineering Manager at ${activeCompanyName}. Let's establish your corporate credentials and executive handle."`
+      : isHr
+        ? `"Welcome to WorkDay. You are entering ${activeCompanyName} as HR Lead. Let's establish your people operations authority and verified handle."`
+        : `"Welcome to WorkDay. Today marks Day 1 of your corporate journey at ${activeCompanyName}. Let's establish your company affiliation, employee identity, and corporate handle."`,
+    2: isManager
+      ? `"As an Engineering Manager at ${activeCompanyName}, you are entrusted with squad velocity and code review quality. Select your leadership scope and management track."`
+      : isHr
+        ? `"As an HR Lead at ${activeCompanyName}, you govern people operations, onboarding compliance, and talent benchmarks. Select your specialization track."`
+        : `"Every engineer at ${activeCompanyName} drives direct product velocity. Select the department and specialization track that fits your technical ambitions."`,
+    3: isManager
+      ? `"Here is your Executive Employment Agreement & Squad Management Commission for ${activeCompanyName}. Review the management deliverables and execute your signature below."`
+      : isHr
+        ? `"Here is your Corporate HR Commission & People Operations Charter for ${activeCompanyName}. Review your authority and execute your signature below."`
+        : `"Here is your official Corporate Appointment Letter for ${activeCompanyName}. Review the performance benchmarks and execute your handwritten virtual signature below."`,
+    4: isManager
+      ? `"Here are the registered engineers currently in your squad at ${activeCompanyName}. You will oversee their sprint tasks, 1-on-1s, and PR merge approvals."`
+      : isHr
+        ? `"Review your People Operations division and registered employee headcount across ${activeCompanyName}."`
+        : `"Meet your Engineering Director and assigned squad. Your daily standups and code reviews will be coordinated directly through this team."`,
+    5: isManager
+      ? `"Your executive credentials and Level M1 Squad Lead clearance have been provisioned in the enterprise directory. Step inside your Manager Command Console."`
+      : isHr
+        ? `"Your HR administrator privileges and corporate governance credentials have been provisioned. Enter your HR Command Console."`
+        : `"Your smartcard credentials and Level 1 clearance have been provisioned in the enterprise directory. Step inside your virtual office when you’re ready."`
   };
 
   const [activeDept, setActiveDept] = useState<DeptCategory>(
     (initialData?.department as DeptCategory) || 'engineering'
   );
-  const availableRoles = (PROBLEMS_DATASET.DEPARTMENT_ROLES[activeDept] || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering) as unknown as DepartmentRole[];
-  const [selectedRole, setSelectedRole] = useState<DepartmentRole>(
-    initialData?.selectedRole || availableRoles[0]
-  );
+
+  const availableRoles: DepartmentRole[] = isManager
+    ? MANAGER_ROLES
+    : isHr
+      ? HR_ROLES
+      : ((PROBLEMS_DATASET.DEPARTMENT_ROLES[activeDept] || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering) as unknown as DepartmentRole[]);
+
+  const [selectedRole, setSelectedRole] = useState<DepartmentRole>(() => {
+    if (initialData?.selectedRole) return initialData.selectedRole;
+    if (isManager) return MANAGER_ROLES[0];
+    if (isHr) return HR_ROLES[0];
+    return availableRoles[0];
+  });
+
+  // Re-sync role when initialData or role category changes
+  useEffect(() => {
+    if (isManager) {
+      const found = MANAGER_ROLES.find(r => r.title === initialData?.selectedRole?.title);
+      setSelectedRole(found || MANAGER_ROLES[0]);
+    } else if (isHr) {
+      const found = HR_ROLES.find(r => r.title === initialData?.selectedRole?.title);
+      setSelectedRole(found || HR_ROLES[0]);
+    }
+  }, [isManager, isHr, initialData?.selectedRole?.title]);
 
   // Canvas Signature state & vector stroke recording
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -125,15 +333,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   // Helper to persist intermediate onboarding progress to local storage & Supabase
   const saveProgressDraft = (overrides?: Partial<EmployeeState>) => {
-    const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'engineer';
+    const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || (isManager ? 'lead' : isHr ? 'hr.lead' : 'engineer');
     const draft: EmployeeState = {
-      fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
-      preferredName: preferredName.trim() || initialData?.preferredName || 'Engineer',
+      fullName: fullName.trim() || initialData?.fullName || (isManager ? 'Engineering Manager' : isHr ? 'HR Lead' : 'Engineering Recruit'),
+      preferredName: preferredName.trim() || initialData?.preferredName || (isManager ? 'Lead' : isHr ? 'HR' : 'Engineer'),
       handle: cleanHandle,
       corporateEmail: `${cleanHandle}@${activeCompanyDomain}`,
       githubUsername: initialData?.githubUsername || cleanHandle,
       empId,
-      department: activeDept,
+      department: isManager ? 'management' : isHr ? 'people' : activeDept,
       selectedRole,
       signatureDataUrl: signatureUrl || '',
       isSigned: isSigned,
@@ -172,6 +380,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       if (initialData.preferredName) setPreferredName(initialData.preferredName);
       if (initialData.handle) setHandle(initialData.handle);
       if (initialData.empId) setEmpId(initialData.empId);
+      if (initialData.companyName) {
+        const found = PRESET_COMPANIES.find(c => c.name.toLowerCase() === initialData.companyName?.toLowerCase())
+          || companies.find(c => c.name.toLowerCase() === initialData.companyName?.toLowerCase());
+        if (found) {
+          setSelectedCompanyId(found.id);
+        } else {
+          setSelectedCompanyId('custom');
+          setCustomCompanyName(initialData.companyName);
+          if (initialData.companyDomain) setCustomCompanyDomain(initialData.companyDomain);
+        }
+      }
       if (initialData.department && (initialData.department in PROBLEMS_DATASET.DEPARTMENT_ROLES)) {
         setActiveDept(initialData.department as DeptCategory);
       }
@@ -179,7 +398,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       if (initialData.signatureDataUrl) setSignatureUrl(initialData.signatureDataUrl);
       if (initialData.isSigned !== undefined) setIsSigned(initialData.isSigned);
     }
-  }, [initialData]);
+  }, [initialData, companies]);
 
   // Re-render saved signature on canvas if opening step 3
   useEffect(() => {
@@ -336,15 +555,31 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'engineer';
     const corpEmail = `${cleanHandle}@${activeCompanyDomain}`;
 
+    // For managers: populate teammates with the selected squad employees from this company
+    let finalSelectedRole = selectedRole;
+    if (isManager && companyEmployees.length > 0) {
+      const chosenReports = companyEmployees.filter(e => selectedSquadEmpIds.includes(e.empId));
+      if (chosenReports.length > 0) {
+        finalSelectedRole = {
+          ...selectedRole,
+          teammates: chosenReports.map(e => ({
+            name: e.fullName,
+            role: e.selectedRole?.title || 'Engineer',
+            avatar: e.avatarUrl || ''
+          }))
+        };
+      }
+    }
+
     const emp: EmployeeState = {
-      fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
-      preferredName: preferredName.trim() || initialData?.preferredName || 'Engineer',
+      fullName: fullName.trim() || initialData?.fullName || (isManager ? 'Engineering Manager' : isHr ? 'HR Lead' : 'Engineering Recruit'),
+      preferredName: preferredName.trim() || initialData?.preferredName || (isManager ? 'Lead' : isHr ? 'HR' : 'Engineer'),
       handle: cleanHandle,
       corporateEmail: corpEmail,
       githubUsername: initialData?.githubUsername || cleanHandle,
       empId,
-      department: activeDept,
-      selectedRole,
+      department: isManager ? 'management' : isHr ? 'people' : activeDept,
+      selectedRole: finalSelectedRole,
       signatureDataUrl: signatureUrl || '',
       isSigned: true,
       currentStep: 5,
@@ -669,30 +904,42 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           {step === 2 && (
             <div className="onboard-step active" id="step2">
               <div className="step-header">
-                <span className="step-kicker">STEP 02</span>
-                <h3 className="step-title">Department & Career Track</h3>
-                <p className="step-desc">Select your specialization. Your daily tickets, reporting manager, and codebase will align with this track.</p>
+                <span className="step-kicker">
+                  {isManager ? 'STEP 02 · EXECUTIVE MANAGEMENT TRACK' : isHr ? 'STEP 02 · PEOPLE OPERATIONS TRACK' : 'STEP 02'}
+                </span>
+                <h3 className="step-title">
+                  {isManager ? 'Management Scope & Squad Leadership' : isHr ? 'HR Governance & Talent Leadership' : 'Department & Career Track'}
+                </h3>
+                <p className="step-desc">
+                  {isManager 
+                    ? `Select your leadership domain. You will direct sprint ticket assignments, PR code reviews, and engineer development for this track at ${activeCompanyName}.`
+                    : isHr 
+                      ? `Select your HR specialization track for corporate governance, verified contract execution, and workforce compliance at ${activeCompanyName}.`
+                      : 'Select your specialization. Your daily tickets, reporting manager, and codebase will align with this track.'}
+                </p>
               </div>
 
-              {/* Department Selector Chips */}
-              <div className="dept-pills">
-                {(['engineering', 'infrastructure', 'data', 'product'] as DeptCategory[]).map(dept => (
-                  <button
-                    key={dept}
-                    type="button"
-                    className={`dept-pill ${activeDept === dept ? 'active' : ''}`}
-                    onClick={() => {
-                      setActiveDept(dept);
-                      const roles = (PROBLEMS_DATASET.DEPARTMENT_ROLES[dept] || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering) as unknown as DepartmentRole[];
-                      if (roles.length > 0) setSelectedRole(roles[0]);
-                    }}
-                  >
-                    {dept === 'engineering' ? 'Engineering' : dept === 'infrastructure' ? 'Infra & DevOps' : dept === 'data' ? 'Data & AI' : 'Product'}
-                  </button>
-                ))}
-              </div>
+              {/* Department Selector Chips (Only for Employees) */}
+              {!isManager && !isHr && (
+                <div className="dept-pills">
+                  {(['engineering', 'infrastructure', 'data', 'product'] as DeptCategory[]).map(dept => (
+                    <button
+                      key={dept}
+                      type="button"
+                      className={`dept-pill ${activeDept === dept ? 'active' : ''}`}
+                      onClick={() => {
+                        setActiveDept(dept);
+                        const roles = (PROBLEMS_DATASET.DEPARTMENT_ROLES[dept] || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering) as unknown as DepartmentRole[];
+                        if (roles.length > 0) setSelectedRole(roles[0]);
+                      }}
+                    >
+                      {dept === 'engineering' ? 'Engineering' : dept === 'infrastructure' ? 'Infra & DevOps' : dept === 'data' ? 'Data & AI' : 'Product'}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-              {/* Minimalist Role List */}
+              {/* Role List */}
               <div className="roles-list" id="rolesGrid">
                 {availableRoles.map(role => {
                   const isSelected = selectedRole.id === role.id;
@@ -729,11 +976,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   className="btn-step-next"
                   id="btnStep2Next"
                   onClick={() => {
-                    saveProgressDraft({ currentStep: 3, department: activeDept, selectedRole });
+                    saveProgressDraft({ currentStep: 3, department: isManager ? 'management' : isHr ? 'people' : activeDept, selectedRole });
                     setStep(3);
                   }}
                 >
-                  Review Offer Letter →
+                  {isManager ? 'Review Executive Agreement →' : isHr ? 'Review HR Commission →' : 'Review Offer Letter →'}
                 </button>
               </div>
             </div>
@@ -771,10 +1018,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 {/* Paper Body Text */}
                 <div className="paper-body">
                   <div className="recipient-box">
-                    <span className="confidential-label">STRICTLY CONFIDENTIAL · EMPLOYEE APPOINTMENT</span>
+                    <span className="confidential-label">
+                      {isManager 
+                        ? 'STRICTLY CONFIDENTIAL · EXECUTIVE MANAGEMENT COMMISSION' 
+                        : isHr 
+                          ? 'STRICTLY CONFIDENTIAL · HR LEAD APPOINTMENT & CHARTER' 
+                          : 'STRICTLY CONFIDENTIAL · EMPLOYEE APPOINTMENT'}
+                    </span>
                     <h4 className="recip-name" id="offerCandidateName">{fullName}</h4>
                     <span className="recip-title" id="offerRoleTitle">{selectedRole.title}</span>
-                    <span className="recip-dept" id="offerDeptName">{selectedRole.title} Department</span>
+                    <span className="recip-dept" id="offerDeptName">
+                      {isManager ? 'Engineering Management Division' : isHr ? 'People Operations Division' : `${selectedRole.title} Track`}
+                    </span>
                   </div>
 
                   <p className="paper-paragraph">
@@ -783,50 +1038,82 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
                   <p className="paper-paragraph">
                     On behalf of the Executive Leadership of <strong>{activeCompanyName} Technologies Inc.</strong>, we are pleased to confirm your appointment as{' '}
-                    <strong id="letterRole">{selectedRole.title}</strong> in our <strong id="letterDept">{selectedRole.title} Department</strong>.{' '}
-                    In this capacity, you will report directly to <strong id="letterManager">{selectedRole.manager.name} ({selectedRole.manager.title})</strong>.
+                    <strong id="letterRole">{selectedRole.title}</strong>.{' '}
+                    {isManager
+                      ? `In this capacity, you will report directly to the VP of Engineering and are entrusted with full operational authority over your engineering squad, PR merge approvals, and sprint velocity at ${activeCompanyName}.`
+                      : isHr
+                        ? `In this capacity, you will report directly to the Chief Operating Officer and govern digital contract compliance, corporate hiring bands, and workforce health at ${activeCompanyName}.`
+                        : `In this capacity, you will report directly to ${selectedRole.manager.name} (${selectedRole.manager.title}).`}
                   </p>
 
                   {/* Paper Terms Table */}
                   <table className="paper-terms-table">
                     <tbody>
                       <tr>
-                        <td className="col-label">Employee Identification</td>
+                        <td className="col-label">Identification Code</td>
                         <td className="col-val mono" id="offerEmpId">{empId}</td>
                       </tr>
                       <tr>
                         <td className="col-label">Corporate Email Allotted</td>
                         <td className="col-val mono" style={{ color: '#0f172a', fontWeight: 600 }}>
-                          {(handle.trim() || 'engineer').toLowerCase().replace(/[^a-z0-9._-]/g, '')}@{activeCompanyDomain}
+                          {(handle.trim() || (isManager ? 'lead' : isHr ? 'hr.lead' : 'engineer')).toLowerCase().replace(/[^a-z0-9._-]/g, '')}@{activeCompanyDomain}
                         </td>
                       </tr>
                       <tr>
                         <td className="col-label">Personal Email Mapped</td>
-                        <td className="col-val mono">{initialData?.email || 'student@personal.com'}</td>
+                        <td className="col-val mono">{initialData?.email || 'user@personal.com'}</td>
                       </tr>
                       <tr>
                         <td className="col-label">Reporting Line</td>
-                        <td className="col-val" id="offerHierarchy">VP Engineering → {selectedRole.manager.name} → You</td>
+                        <td className="col-val" id="offerHierarchy">
+                          {isManager 
+                            ? 'Executive Committee → VP Engineering → You (Squad Lead)' 
+                            : isHr 
+                              ? 'Executive Board → Chief Operating Officer → You (HR Lead)' 
+                              : `VP Engineering → ${selectedRole.manager.name} → You`}
+                        </td>
                       </tr>
                       <tr>
-                        <td className="col-label">Performance Stipend</td>
-                        <td className="col-val mono">2,400 Corporate Performance Credits / Sprint</td>
+                        <td className="col-label">Performance &amp; Compensation</td>
+                        <td className="col-val mono">
+                          {isManager 
+                            ? 'Executive Tier · Quarterly Performance Credits & RSUs' 
+                            : isHr 
+                              ? 'Corporate Operations Tier · Performance Allocation' 
+                              : '2,400 Corporate Performance Credits / Sprint'}
+                        </td>
                       </tr>
                       <tr>
-                        <td className="col-label">Probationary Milestone</td>
-                        <td className="col-val">Sprint 01 Task Submission &amp; Manager Code Review</td>
+                        <td className="col-label">Key Milestone</td>
+                        <td className="col-val">
+                          {isManager 
+                            ? 'First Sprint Task Delegation & Squad PR Merge Reviews' 
+                            : isHr 
+                              ? 'Verified Corporate Roster & Workforce Contract Execution' 
+                              : 'Sprint 01 Task Submission & Manager Code Review'}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
 
                   <p className="paper-paragraph legal-clause">
-                    <strong>Terms of Induction:</strong> You will be evaluated on technical deliverable quality, sprint SLA adherence, and proactive collaboration in daily standups. All code, design assets, and documentation authored within {activeCompanyName} remain proprietary enterprise property.
+                    <strong>Terms of Agreement:</strong> {isManager 
+                      ? `As an Engineering Manager at ${activeCompanyName}, you agree to uphold rigorous software quality standards, conduct thoughtful code reviews, and champion developer velocity.`
+                      : isHr 
+                        ? `As HR Lead at ${activeCompanyName}, you agree to safeguard employee confidentiality, maintain corporate compliance, and oversee equitable onboarding standards.`
+                        : `You will be evaluated on technical deliverable quality, sprint SLA adherence, and proactive collaboration in daily standups.`} All intellectual property, designs, and code remain exclusive enterprise property of {activeCompanyName}.
                   </p>
 
                   {/* Interactive Handwritten Signature Area */}
                   <div className="signature-block">
                     <div className="sig-header-row">
-                      <span className="sig-instruction">EMPLOYEE VIRTUAL SIGNATURE (SIGN WITH FINGER / MOUSE)</span>
+                      <span className="sig-instruction">
+                        {isManager 
+                          ? 'EXECUTIVE DIGITAL SIGNATURE (SIGN WITH FINGER / MOUSE)' 
+                          : isHr 
+                            ? 'HR COMMISSIONER SIGNATURE (SIGN WITH FINGER / MOUSE)' 
+                            : 'EMPLOYEE VIRTUAL SIGNATURE (SIGN WITH FINGER / MOUSE)'}
+                      </span>
                       <button type="button" className="btn-clear-sig" id="btnClearSig" onClick={handleClearSig}>
                         Clear Signature
                       </button>
@@ -870,7 +1157,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         disabled={strokeCount < 3}
                         onClick={handleAdoptSig}
                       >
-                        Adopt Signature & File Contract
+                        Adopt Signature &amp; File Contract
                       </button>
                     </div>
                   </div>
@@ -878,9 +1165,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   {/* Official Red Ink Stamp (Appears upon signing) */}
                   <div className={`official-ink-stamp ${isSigned ? 'stamped' : ''}`} id="officialInkStamp">
                     <div className="stamp-inner">
-                      <span className="stamp-org">VIRTUALHQ INC.</span>
-                      <span className="stamp-action">COUNTERSIGNED & FILED</span>
-                      <span className="stamp-date" id="stampDate">SEP 10, 2026</span>
+                      <span className="stamp-org">{activeCompanyName.toUpperCase()} CORP</span>
+                      <span className="stamp-action">COUNTERSIGNED &amp; FILED</span>
+                      <span className="stamp-date" id="stampDate">SEP 11, 2026</span>
                     </div>
                   </div>
 
@@ -901,57 +1188,431 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     setStep(4);
                   }}
                 >
-                  Meet Manager & Team →
+                  {isManager ? 'View Assigned Squad →' : isHr ? 'View Corporate Workforce →' : 'Meet Manager & Team →'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 4: Reporting Manager & Squad */}
+          {/* STEP 4: Reporting Manager & Squad (Or Direct Reports for Managers) */}
           {step === 4 && (
             <div className="onboard-step active" id="step4">
               <div className="step-header">
-                <span className="step-kicker">STEP 04</span>
-                <h3 className="step-title">Reporting Manager & Team</h3>
-                <p className="step-desc">Meet your direct reporting manager and the virtual teammates you will collaborate with.</p>
+                <span className="step-kicker">
+                  {isManager 
+                    ? `STEP 04 · YOUR ASSIGNED SQUAD AT ${activeCompanyName.toUpperCase()}` 
+                    : isHr 
+                      ? `STEP 04 · WORKFORCE GOVERNANCE` 
+                      : 'STEP 04'}
+                </span>
+                <h3 className="step-title">
+                  {isManager 
+                    ? `Your Direct Reports at ${activeCompanyName}` 
+                    : isHr 
+                      ? `Registered Workforce at ${activeCompanyName}` 
+                      : 'Reporting Manager & Team'}
+                </h3>
+                <p className="step-desc">
+                  {isManager 
+                    ? `These are the engineers registered under ${activeCompanyName} in the corporate database who report directly to you for sprint tasks, 1-on-1s, and PR merge reviews.` 
+                    : isHr 
+                      ? `Active employee headcount and verified contract holders in ${activeCompanyName}'s enterprise directory.` 
+                      : 'Meet your direct reporting manager and the virtual teammates you will collaborate with.'}
+                </p>
               </div>
 
-              {/* Clean Manager Card */}
-              <div className="manager-card" id="managerCard">
-                <div className="manager-avatar-initials" id="mgrInitials">{selectedRole.manager.initials}</div>
-                <div className="manager-info">
-                  <div className="manager-header-row">
-                    <h4 className="manager-name" id="mgrName">{selectedRole.manager.name}</h4>
-                    <span className="manager-role-tag" id="mgrRole">{selectedRole.manager.title}</span>
-                  </div>
-                  <p className="manager-quote" id="mgrQuote">
-                    "{selectedRole.manager.quote}"
-                  </p>
-                  <div className="manager-cadence">
-                    <span className="cadence-item">Daily Standup: 10:00 AM</span>
-                    <span className="cadence-sep">·</span>
-                    <span className="cadence-item">Channel: #eng-core</span>
-                    <span className="cadence-sep">·</span>
-                    <span className="cadence-item">1-on-1: Thursdays</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Teammates Roster */}
-              <div className="teammates-section">
-                <h5 className="teammates-heading">Squad Members</h5>
-                <div className="teammates-grid" id="teammatesGrid">
-                  {selectedRole.teammates.map((tm, idx) => (
-                    <div key={idx} className="teammate-card">
-                      <div className="teammate-avatar-initials">{tm.avatar}</div>
-                      <div className="teammate-info">
-                        <span className="teammate-name">{tm.name}</span>
-                        <span className="teammate-role">{tm.role}</span>
+              {/* MANAGER VIEW: Live direct reports from database for active company */}
+              {isManager && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Executive Lead Summary Card */}
+                  <div style={{
+                    padding: '1rem 1.25rem',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: '#a1a1aa', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                        Executive Leadership Scope
+                      </div>
+                      <div style={{ fontSize: '1.05rem', color: '#ffffff', fontWeight: 600, marginTop: '2px' }}>
+                        {selectedRole.title}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#71717a', marginTop: '2px' }}>
+                        Company: <span style={{ color: '#ffffff', fontWeight: 600 }}>{activeCompanyName}</span> · Domain: <span className="mono" style={{ color: '#a1a1aa' }}>@{activeCompanyDomain}</span>
                       </div>
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        padding: '4px 10px',
+                        borderRadius: '980px',
+                        background: 'rgba(59, 130, 246, 0.15)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        color: '#60a5fa',
+                        fontWeight: 600
+                      }}>
+                        {companyEmployees.length} {companyEmployees.length === 1 ? 'Engineer' : 'Engineers'} in Database
+                      </span>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        padding: '4px 10px',
+                        borderRadius: '980px',
+                        background: selectedSquadEmpIds.length > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                        border: selectedSquadEmpIds.length > 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        color: selectedSquadEmpIds.length > 0 ? '#34d399' : '#a1a1aa',
+                        fontWeight: 600
+                      }}>
+                        {selectedSquadEmpIds.length} Assigned to Squad
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Direct Reports List */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <h5 style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+                          Engineers at {activeCompanyName}
+                        </h5>
+                        <p style={{ fontSize: '0.72rem', color: '#71717a', margin: '2px 0 0' }}>
+                          Select the engineers who will report directly to you for sprint tasks, 1-on-1s, and PR reviews.
+                        </p>
+                      </div>
+
+                      {companyEmployees.length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={selectAllSquad}
+                            style={{
+                              fontSize: '0.7rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: 'rgba(255, 255, 255, 0.06)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              color: '#ffffff',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Select All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={deselectAllSquad}
+                            style={{
+                              fontSize: '0.7rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: 'rgba(255, 255, 255, 0.06)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              color: '#a1a1aa',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Clear
+                          </button>
+                          <button
+                            type="button"
+                            onClick={fetchCompanyEmployees}
+                            title="Refresh from Database"
+                            style={{
+                              fontSize: '0.7rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: 'rgba(255, 255, 255, 0.06)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              color: '#a1a1aa',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ↻
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {loadingEmployees ? (
+                      <div style={{ padding: '2.5rem', textAlign: 'center', color: '#71717a', fontSize: '0.82rem' }}>
+                        <div className="pulse-indicator" style={{ margin: '0 auto 0.75rem' }}></div>
+                        Fetching registered engineers for {activeCompanyName} from database...
+                      </div>
+                    ) : companyEmployees.length > 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
+                        {companyEmployees.map(emp => {
+                          const isAssigned = selectedSquadEmpIds.includes(emp.empId);
+                          return (
+                            <div
+                              key={emp.empId}
+                              onClick={() => toggleSquadMember(emp.empId)}
+                              style={{
+                                background: isAssigned ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                border: isAssigned ? '1px solid rgba(59, 130, 246, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                borderRadius: '12px',
+                                padding: '0.9rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.55rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                boxShadow: isAssigned ? '0 0 16px rgba(59, 130, 246, 0.1)' : 'none'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                                  <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: 700,
+                                    fontSize: '0.8rem',
+                                    color: '#ffffff',
+                                    overflow: 'hidden',
+                                    flexShrink: 0
+                                  }}>
+                                    {emp.avatarUrl ? (
+                                      <img src={emp.avatarUrl} alt={emp.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                      (emp.fullName || 'E').slice(0, 2).toUpperCase()
+                                    )}
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {emp.fullName}
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: '#a1a1aa' }}>
+                                      {emp.empId} · @{emp.handle}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '5px',
+                                  background: isAssigned ? '#3b82f6' : 'rgba(255, 255, 255, 0.06)',
+                                  border: isAssigned ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.2)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ffffff',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  flexShrink: 0
+                                }}>
+                                  {isAssigned ? '✓' : ''}
+                                </div>
+                              </div>
+
+                              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '0.45rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#ffffff', fontWeight: 500 }}>
+                                  {emp.selectedRole?.title || 'Engineering Recruit'}
+                                </div>
+                                <div className="mono" style={{ fontSize: '0.66rem', color: '#71717a', marginTop: '2px', wordBreak: 'break-all' }}>
+                                  {emp.corporateEmail}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.2rem' }}>
+                                <span style={{
+                                  fontSize: '0.65rem',
+                                  color: isAssigned ? '#10b981' : '#a1a1aa',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontWeight: 600
+                                }}>
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isAssigned ? '#10b981' : '#71717a' }}></span>
+                                  {isAssigned ? 'Assigned to Your Squad' : 'Available in Company'}
+                                </span>
+                                <span style={{ fontSize: '0.64rem', color: '#71717a', textTransform: 'uppercase' }}>
+                                  {emp.department || 'engineering'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{
+                        padding: '2.5rem 1.5rem',
+                        borderRadius: '14px',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px dashed rgba(255, 255, 255, 0.12)',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '50%',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          margin: '0 auto 0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff'
+                        }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                          </svg>
+                        </div>
+                        <h4 style={{ color: '#ffffff', fontSize: '0.96rem', fontWeight: 600, margin: 0 }}>
+                          No Engineers Registered at {activeCompanyName} Yet
+                        </h4>
+                        <p style={{ color: '#8e8e93', fontSize: '0.78rem', maxWidth: '440px', margin: '0.4rem auto 1.25rem', lineHeight: 1.45 }}>
+                          According to the corporate database, no employee accounts have joined {activeCompanyName} yet. New employees selecting {activeCompanyName} during onboarding will automatically populate your squad. You can also provision a sample squad in the database right now:
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleSeedSquad}
+                          disabled={seedingDemoSquad}
+                          style={{
+                            padding: '0.55rem 1.1rem',
+                            borderRadius: '8px',
+                            background: '#ffffff',
+                            color: '#000000',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.8rem',
+                            cursor: seedingDemoSquad ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            opacity: seedingDemoSquad ? 0.7 : 1
+                          }}
+                        >
+                          {seedingDemoSquad ? 'Provisioning Engineers into Database...' : `+ Provision Demo Squad for ${activeCompanyName}`}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* HR VIEW: Corporate headcount overview */}
+              {isHr && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{
+                    padding: '1rem 1.25rem',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: '#a1a1aa', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                        HR Administration Scope
+                      </div>
+                      <div style={{ fontSize: '1rem', color: '#ffffff', fontWeight: 600, marginTop: '2px' }}>
+                        {selectedRole.title}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#71717a', marginTop: '2px' }}>
+                        Tenant Organization: <span style={{ color: '#ffffff', fontWeight: 500 }}>{activeCompanyName}</span>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      padding: '4px 10px',
+                      borderRadius: '980px',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#34d399',
+                      fontWeight: 600
+                    }}>
+                      {companyEmployees.length} Registered Workforce
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                      Corporate Employee Headcount
+                    </h5>
+                    {companyEmployees.length > 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.75rem' }}>
+                        {companyEmployees.map(emp => (
+                          <div
+                            key={emp.empId}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.03)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              borderRadius: '12px',
+                              padding: '0.9rem'
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#ffffff' }}>{emp.fullName}</div>
+                            <div style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>{emp.selectedRole?.title} · {emp.empId}</div>
+                            <div className="mono" style={{ fontSize: '0.66rem', color: '#71717a', marginTop: '4px' }}>{emp.corporateEmail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: '1.5rem', textAlign: 'center', color: '#71717a', fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                        No employees registered under {activeCompanyName} yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* EMPLOYEE VIEW: Traditional Reporting Manager & Squad */}
+              {!isManager && !isHr && (
+                <>
+                  {/* Clean Manager Card */}
+                  <div className="manager-card" id="managerCard">
+                    <div className="manager-avatar-initials" id="mgrInitials">{selectedRole.manager.initials}</div>
+                    <div className="manager-info">
+                      <div className="manager-header-row">
+                        <h4 className="manager-name" id="mgrName">{selectedRole.manager.name}</h4>
+                        <span className="manager-role-tag" id="mgrRole">{selectedRole.manager.title}</span>
+                      </div>
+                      <p className="manager-quote" id="mgrQuote">
+                        "{selectedRole.manager.quote}"
+                      </p>
+                      <div className="manager-cadence">
+                        <span className="cadence-item">Daily Standup: 10:00 AM</span>
+                        <span className="cadence-sep">·</span>
+                        <span className="cadence-item">Channel: #eng-core</span>
+                        <span className="cadence-sep">·</span>
+                        <span className="cadence-item">1-on-1: Thursdays</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Teammates Roster */}
+                  <div className="teammates-section">
+                    <h5 className="teammates-heading">Squad Members</h5>
+                    <div className="teammates-grid" id="teammatesGrid">
+                      {selectedRole.teammates.map((tm, idx) => (
+                        <div key={idx} className="teammate-card">
+                          <div className="teammate-avatar-initials">{tm.avatar}</div>
+                          <div className="teammate-info">
+                            <span className="teammate-name">{tm.name}</span>
+                            <span className="teammate-role">{tm.role}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="step-actions">
                 <button type="button" className="btn-step-back" id="btnStep4Back" onClick={() => setStep(3)}>
@@ -966,7 +1627,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     setStep(5);
                   }}
                 >
-                  Issue Corporate Badge →
+                  {isManager ? 'Issue Executive Badge →' : isHr ? 'Issue HR Badge →' : 'Issue Corporate Badge →'}
                 </button>
               </div>
             </div>
@@ -1042,7 +1703,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     </div>
                     <div className="id-tier-badge">
                       <span className="tier-dot"></span>
-                      <span className="tier-label" id="badgeTier">LEVEL 01 · TIER A</span>
+                      <span className="tier-label" id="badgeTier">
+                        {isManager ? (selectedRole.level || 'LEVEL M1 · SQUAD LEAD') : isHr ? (selectedRole.level || 'LEVEL HR1 · LEAD') : 'LEVEL 01 · TIER A'}
+                      </span>
                     </div>
                   </div>
 
@@ -1107,7 +1770,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     </div>
                     <div className="meta-cell">
                       <span className="m-label">CLEARANCE</span>
-                      <span className="m-val mono">INTERNAL</span>
+                      <span className="m-val mono">
+                        {isManager ? 'EXECUTIVE CLEARANCE' : isHr ? 'HR PRIVILEGED' : 'INTERNAL'}
+                      </span>
                     </div>
                     <div className="meta-cell">
                       <span className="m-label">STATUS</span>
@@ -1167,7 +1832,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               {/* Launch Button */}
               <div className="final-launch-wrapper">
                 <button className="btn-enter-workspace" id="btnEnterWorkspace" onClick={handleFinish}>
-                  Step Inside Your Virtual Office →
+                  {isManager ? 'Open Manager Command Console →' : isHr ? 'Open HR Command Console →' : 'Step Inside Your Virtual Office →'}
                 </button>
               </div>
             </div>

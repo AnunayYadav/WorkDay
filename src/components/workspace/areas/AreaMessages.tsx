@@ -41,14 +41,14 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
 
   useEffect(() => {
     let isMounted = true;
-    CloudStorage.listProfiles().then(profiles => {
+    CloudStorage.listProfiles(employee.companyName || 'Stripe').then(profiles => {
       if (isMounted) {
         const others = profiles.filter(p => p.empId !== employee.empId && p.fullName);
         setColleagues(others);
       }
     });
     return () => { isMounted = false; };
-  }, [employee.empId]);
+  }, [employee.empId, employee.companyName]);
 
   // Build canonical channel & direct directory
   const channels = [
