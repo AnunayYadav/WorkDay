@@ -27,9 +27,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   initialData
 }) => {
   const [step, setStep] = useState(1);
-  const [fullName, setFullName] = useState(initialData?.fullName || 'Alex Morgan');
-  const [preferredName, setPreferredName] = useState(initialData?.preferredName || 'Alex');
-  const [handle, setHandle] = useState(initialData?.handle || 'alex.morgan');
+  const [fullName, setFullName] = useState(initialData?.fullName || '');
+  const [preferredName, setPreferredName] = useState(initialData?.preferredName || '');
+  const [handle, setHandle] = useState(initialData?.handle || '');
   const [empId] = useState(initialData?.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`);
   
   const [activeDept, setActiveDept] = useState<DeptCategory>('engineering');
@@ -62,6 +62,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       }
     }
   }, [fullName]);
+
+  // Sync initialData changes (e.g. after auth login)
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.fullName) setFullName(initialData.fullName);
+      if (initialData.preferredName) setPreferredName(initialData.preferredName);
+      if (initialData.handle) setHandle(initialData.handle);
+      if (initialData.selectedRole) setSelectedRole(initialData.selectedRole);
+      if (initialData.signatureDataUrl) setSignatureUrl(initialData.signatureDataUrl);
+      if (initialData.isSigned !== undefined) setIsSigned(initialData.isSigned);
+    }
+  }, [initialData]);
 
   // Handle signature drawing
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -160,16 +172,27 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       origin: { y: 0.6 }
     });
 
+    const cleanHandle = handle.trim() || initialData?.handle || 'engineer';
+    const corpEmail = initialData?.corporateEmail || `${cleanHandle}@virtualhq.corp`;
+
     const emp: EmployeeState = {
-      fullName: fullName.trim() || 'Alex Morgan',
-      preferredName: preferredName.trim() || 'Alex',
-      handle: handle.trim() || 'alex.morgan',
+      fullName: fullName.trim() || initialData?.fullName || 'Engineering Recruit',
+      preferredName: preferredName.trim() || initialData?.preferredName || 'Engineer',
+      handle: cleanHandle,
+      corporateEmail: corpEmail,
+      githubUsername: initialData?.githubUsername || cleanHandle,
       empId,
-      department: selectedRole.title,
+      department: activeDept,
       selectedRole,
-      signatureDataUrl: signatureUrl,
+      signatureDataUrl: signatureUrl || '',
       isSigned: true,
-      currentStep: 5
+      currentStep: 5,
+      email: initialData?.email || '',
+      avatarUrl: initialData?.avatarUrl || `https://github.com/${initialData?.githubUsername || cleanHandle}.png`,
+      authProvider: initialData?.authProvider || 'github',
+      userId: initialData?.userId,
+      userType: 'employee',
+      totalXp: initialData?.totalXp || 200
     };
     onComplete(emp);
   };
@@ -281,7 +304,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     id="empFullName"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Alex Morgan"
+                    placeholder="Legal First & Last Name"
                     required
                   />
                 </div>
@@ -293,7 +316,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     id="empPreferredName"
                     value={preferredName}
                     onChange={(e) => setPreferredName(e.target.value)}
-                    placeholder="e.g. Alex"
+                    placeholder="Preferred display name"
                     required
                   />
                 </div>
@@ -306,7 +329,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       id="empHandle"
                       value={handle}
                       onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
-                      placeholder="alex.morgan"
+                      placeholder="first.last"
                     />
                     <span className="suffix">@virtualhq.corp</span>
                   </div>
@@ -704,6 +727,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       <div className="id-field">
                         <span className="id-label">NAME</span>
                         <h4 className="id-emp-name" id="badgeEmpName">{fullName}</h4>
+                      </div>
+                      <div className="id-field">
+                        <span className="id-label">ALLOTTED CORPORATE EMAIL</span>
+                        <span className="id-emp-role mono" style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
+                          {initialData?.corporateEmail || `${handle.trim() || 'engineer'}@virtualhq.corp`}
+                        </span>
                       </div>
                       <div className="id-field">
                         <span className="id-label">ROLE / DESIGNATION</span>

@@ -6,9 +6,9 @@ interface AreaCompanyProps {
 }
 
 export const AreaCompany: React.FC<AreaCompanyProps> = ({ employee }) => {
-  const userName = employee?.fullName || 'Alex Morgan';
-  const userInitials = employee?.preferredName?.slice(0, 2).toUpperCase() || 'AM';
-  const roleTitle = employee?.selectedRole?.title || 'Junior Frontend Developer';
+  const userName = employee?.fullName || 'Corporate Member';
+  const userInitials = employee?.preferredName ? employee.preferredName.slice(0, 2).toUpperCase() : 'HQ';
+  const roleTitle = employee?.selectedRole?.title || 'Engineer';
 
   return (
     <section className="workspace-area active" id="areaCompany">

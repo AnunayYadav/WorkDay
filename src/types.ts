@@ -14,6 +14,8 @@ export interface EmployeeState {
   userId?: string;
   userType?: 'employee' | 'manager';
   totalXp?: number;
+  githubUsername?: string;
+  corporateEmail?: string;
 }
 
 export interface EmployeeProgressRecord {
@@ -80,6 +82,8 @@ export interface PullRequest {
   status: 'pending_review' | 'approved_merged' | 'changes_requested';
   submissionType: 'monaco' | 'zip';
   codePatch?: string;
+  originalCode?: string;
+  modifiedCode?: string;
   zipMeta?: {
     name: string;
     size: string;

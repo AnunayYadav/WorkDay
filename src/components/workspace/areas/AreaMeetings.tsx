@@ -201,7 +201,7 @@ export const AreaMeetings: React.FC<AreaMeetingsProps> = ({ employee }) => {
 
               <div className="standup-entry">
                 <span className="entry-author">Devon Reed:</span>
-                <p className="entry-text">"Yesterday merged PR #81 for GraphQL caching. Today pairing with Alex on ticket 104 auth boundaries. No blockers."</p>
+                <p className="entry-text">"Yesterday merged PR #81 for GraphQL caching. Today pairing with {employee.preferredName || 'our squad'} on ticket 104 auth boundaries. No blockers."</p>
               </div>
 
               <div className="standup-entry">

@@ -46,7 +46,7 @@ export const AreaMessages: React.FC<AreaMessagesProps> = ({ employee }) => {
         id: 'd1',
         sender: 'Devon Reed',
         isMe: false,
-        text: 'Hey Alex! If you need any help with the shared component styling or theme tokens, let me know.',
+        text: `Hey ${employee.preferredName || 'there'}! If you need any help with the shared component styling or theme tokens, let me know.`,
         time: '09:45 AM'
       }
     ],

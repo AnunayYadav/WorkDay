@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Editor, { DiffEditor } from '@monaco-editor/react';
 import type { EmployeeState, ProblemIssue, PullRequest } from '../../types';
 import { CloudStorage } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
@@ -20,17 +20,48 @@ interface FileItem {
   folder: string;
   language: string;
   content: string;
+  originalContent?: string;
+}
+
+export function computeUnifiedDiff(filePath: string, original: string = '', modified: string = ''): string {
+  if (original === modified) {
+    return `# --- a/${filePath}\n# +++ b/${filePath}\n# (No code modifications in this file)\n`;
+  }
+
+  const origLines = original.split('\n');
+  const modLines = modified.split('\n');
+
+  let diff = `--- a/${filePath}\n+++ b/${filePath}\n@@ -1,${origLines.length} +1,${modLines.length} @@\n`;
+
+  const maxLines = Math.max(origLines.length, modLines.length);
+  let hasChanges = false;
+
+  for (let i = 0; i < maxLines; i++) {
+    const o = origLines[i];
+    const m = modLines[i];
+
+    if (o !== undefined && m !== undefined) {
+      if (o === m) {
+        diff += ` ${o}\n`;
+      } else {
+        diff += `-${o}\n+${m}\n`;
+        hasChanges = true;
+      }
+    } else if (o !== undefined) {
+      diff += `-${o}\n`;
+      hasChanges = true;
+    } else if (m !== undefined) {
+      diff += `+${m}\n`;
+      hasChanges = true;
+    }
+  }
+
+  return hasChanges ? diff : `# No modifications detected in ${filePath}\n`;
 }
 
 const getDefaultFiles = (issue: ProblemIssue): Record<string, FileItem> => {
   const repoBase = issue.repo.split('/')[1] || issue.repo;
-  return {
-    'SolutionPatch.tsx': {
-      name: 'SolutionPatch.tsx',
-      path: 'src/components/SolutionPatch.tsx',
-      folder: 'components',
-      language: 'typescript',
-      content: `/**
+  const solutionContent = `/**
  * Solution for ${issue.repo} - Issue #${issue.issue_no}
  * Sprint Track: ${issue.role} (${issue.level} Level)
  * Submitting Developer: ${issue.role}
@@ -55,14 +86,9 @@ export const SprintSolution: React.FC<TaskProps> = ({ issueNumber, repo, isResol
     </div>
   );
 };
-`
-    },
-    'specs.test.ts': {
-      name: 'specs.test.ts',
-      path: 'src/tests/specs.test.ts',
-      folder: 'tests',
-      language: 'typescript',
-      content: `import { describe, it, expect } from 'vitest';
+`;
+
+  const specsContent = `import { describe, it, expect } from 'vitest';
 
 describe('${repoBase} Issue #${issue.issue_no} Acceptance Suite', () => {
   it('should initialize module with sprint issue #${issue.issue_no}', () => {
@@ -80,14 +106,9 @@ describe('${repoBase} Issue #${issue.issue_no} Acceptance Suite', () => {
     expect(executionLatencyMs).toBeLessThan(50);
   });
 });
-`
-    },
-    'README.md': {
-      name: 'README.md',
-      path: 'README.md',
-      folder: 'root',
-      language: 'markdown',
-      content: `# ${issue.repo} — Issue #${issue.issue_no}
+`;
+
+  const readmeContent = `# ${issue.repo} — Issue #${issue.issue_no}
 
 **Sprint Track**: ${issue.role}  
 **Clearance Level**: ${issue.level}  
@@ -98,26 +119,54 @@ describe('${repoBase} Issue #${issue.issue_no} Acceptance Suite', () => {
 - [x] Solution patch developed in Monaco Studio
 - [x] Automated test assertions passed
 - [x] Submitted to Real Manager Review Suite (+50 XP)
-`
+`;
+
+  const packageJsonContent = JSON.stringify({
+    name: repoBase.toLowerCase(),
+    version: "1.0.0",
+    private: true,
+    scripts: {
+      test: "vitest run",
+      build: "vite build"
+    },
+    dependencies: {
+      react: "^19.0.0",
+      "react-dom": "^19.0.0"
+    }
+  }, null, 2);
+
+  return {
+    'SolutionPatch.tsx': {
+      name: 'SolutionPatch.tsx',
+      path: 'src/components/SolutionPatch.tsx',
+      folder: 'components',
+      language: 'typescript',
+      content: solutionContent,
+      originalContent: solutionContent
+    },
+    'specs.test.ts': {
+      name: 'specs.test.ts',
+      path: 'src/tests/specs.test.ts',
+      folder: 'tests',
+      language: 'typescript',
+      content: specsContent,
+      originalContent: specsContent
+    },
+    'README.md': {
+      name: 'README.md',
+      path: 'README.md',
+      folder: 'root',
+      language: 'markdown',
+      content: readmeContent,
+      originalContent: readmeContent
     },
     'package.json': {
       name: 'package.json',
       path: 'package.json',
       folder: 'root',
       language: 'json',
-      content: JSON.stringify({
-        name: repoBase.toLowerCase(),
-        version: "1.0.0",
-        private: true,
-        scripts: {
-          test: "vitest run",
-          build: "vite build"
-        },
-        dependencies: {
-          react: "^19.0.0",
-          "react-dom": "^19.0.0"
-        }
-      }, null, 2)
+      content: packageJsonContent,
+      originalContent: packageJsonContent
     }
   };
 };
@@ -137,6 +186,8 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
   const [activeDrawerTab, setActiveDrawerTab] = useState<'terminal' | 'output' | 'problems' | 'preview'>('terminal');
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
   const [isSplitPreview, setIsSplitPreview] = useState(false);
+  const [isDiffView, setIsDiffView] = useState(false);
+  const [isLoadingGithubFiles, setIsLoadingGithubFiles] = useState(false);
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedZipName, setUploadedZipName] = useState<string | null>(null);
@@ -157,6 +208,125 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
     components: true,
     tests: true
   });
+
+  // Fetch real GitHub files from remote repository
+  const loadRemoteRepoFiles = useCallback(async () => {
+    if (!issue.repo) return;
+    setIsLoadingGithubFiles(true);
+    setOutputLogs(prev => [
+      ...prev,
+      `[github] Fetching real repository tree for ${issue.repo}...`
+    ]);
+
+    try {
+      let branch = 'main';
+      let treeRes = await fetch(`https://data.jsdelivr.com/v1/package/gh/${issue.repo}@main`);
+      if (!treeRes.ok) {
+        treeRes = await fetch(`https://data.jsdelivr.com/v1/package/gh/${issue.repo}@master`);
+        if (treeRes.ok) branch = 'master';
+      }
+
+      const fetchedFiles: Record<string, FileItem> = {};
+
+      if (treeRes.ok) {
+        const treeData = await treeRes.json();
+        const candidateFiles: { name: string; path: string }[] = [];
+
+        if (Array.isArray(treeData.files)) {
+          for (const item of treeData.files) {
+            if (item.type === 'file' || (!item.files && item.name.includes('.'))) {
+              const ext = item.name.split('.').pop()?.toLowerCase();
+              if (['json', 'md', 'ts', 'tsx', 'js', 'jsx', 'css', 'html', 'yml', 'yaml', 'toml', 'py'].includes(ext || '')) {
+                // skip overly massive files
+                if (!item.name.includes('-lock.') && item.name !== 'yarn.lock') {
+                  candidateFiles.push({ name: item.name, path: item.name });
+                }
+              }
+            }
+          }
+        }
+
+        const priorityNames = ['package.json', 'README.md', 'tsconfig.json', 'index.ts', 'index.js', 'src/App.tsx', 'vite.config.ts'];
+        candidateFiles.sort((a, b) => {
+          const aPri = priorityNames.indexOf(a.name) >= 0 ? 0 : 1;
+          const bPri = priorityNames.indexOf(b.name) >= 0 ? 0 : 1;
+          return aPri - bPri;
+        });
+
+        const toFetch = candidateFiles.slice(0, 6);
+        await Promise.all(
+          toFetch.map(async (file) => {
+            try {
+              const rawRes = await fetch(`https://raw.githubusercontent.com/${issue.repo}/${branch}/${file.path}`);
+              if (rawRes.ok) {
+                const text = await rawRes.text();
+                if (text && text.length < 250000) {
+                  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                  let lang = 'plaintext';
+                  if (['ts', 'tsx'].includes(ext)) lang = 'typescript';
+                  else if (['js', 'jsx'].includes(ext)) lang = 'javascript';
+                  else if (ext === 'json') lang = 'json';
+                  else if (ext === 'md') lang = 'markdown';
+                  else if (ext === 'css') lang = 'css';
+                  else if (ext === 'html') lang = 'html';
+                  else if (ext === 'py') lang = 'python';
+
+                  fetchedFiles[file.name] = {
+                    name: file.name,
+                    path: file.path,
+                    folder: 'root',
+                    language: lang,
+                    content: text,
+                    originalContent: text
+                  };
+                }
+              }
+            } catch (_) {}
+          })
+        );
+      }
+
+      if (Object.keys(fetchedFiles).length > 0) {
+        setFiles(prev => {
+          const merged = { ...prev, ...fetchedFiles };
+          if (!merged['SolutionPatch.tsx']) {
+            merged['SolutionPatch.tsx'] = prev['SolutionPatch.tsx'];
+          }
+          return merged;
+        });
+        setOpenTabs(prev => {
+          const newNames = Object.keys(fetchedFiles).slice(0, 4);
+          return Array.from(new Set([...prev, ...newNames]));
+        });
+        setOutputLogs(prev => [
+          ...prev,
+          `[github] Mounted ${Object.keys(fetchedFiles).length} live files from https://github.com/${issue.repo} (${branch})`,
+          `[github] Ready for live solution authoring & unified git diff dispatch.`
+        ]);
+        showToast({
+          title: 'GitHub Repos Synced',
+          message: `Loaded ${Object.keys(fetchedFiles).length} live files from ${issue.repo}`,
+          type: 'success'
+        });
+      } else {
+        setOutputLogs(prev => [
+          ...prev,
+          `[github] Loaded local task environment for ${issue.repo}.`
+        ]);
+      }
+    } catch (err: any) {
+      setOutputLogs(prev => [
+        ...prev,
+        `[github] Sandbox loaded for ${issue.repo} (${err?.message || 'offline'})`
+      ]);
+    } finally {
+      setIsLoadingGithubFiles(false);
+    }
+  }, [issue.repo, showToast]);
+
+  useEffect(() => {
+    loadRemoteRepoFiles();
+  }, [loadRemoteRepoFiles]);
 
   // Handle Dragging Sidebar Width
   useEffect(() => {
@@ -231,6 +401,22 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
     setIsSubmitting(true);
 
     const prId = `PR-#${Math.floor(100 + Math.random() * 900)}`;
+
+    // Gather all modified files to generate unified git diff
+    let combinedPatch = '';
+    const primaryOriginal = activeFile.originalContent || '';
+    const primaryModified = activeFile.content;
+
+    for (const [fName, fileItem] of Object.entries(files)) {
+      if (fileItem.content !== fileItem.originalContent) {
+        combinedPatch += computeUnifiedDiff(fileItem.path || fName, fileItem.originalContent || '', fileItem.content) + '\n';
+      }
+    }
+
+    if (!combinedPatch.trim()) {
+      combinedPatch = computeUnifiedDiff(activeFile.path || activeFileName, primaryOriginal, primaryModified);
+    }
+
     const newPr: PullRequest = {
       id: prId,
       s_no: issue.s_no,
@@ -242,7 +428,9 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
       authorDept: employee.department || 'engineering',
       status: 'pending_review',
       submissionType: uploadedZipName ? 'zip' : 'monaco',
-      codePatch: activeFile.content,
+      codePatch: combinedPatch,
+      originalCode: primaryOriginal,
+      modifiedCode: primaryModified,
       createdAt: new Date().toISOString()
     };
 
@@ -444,7 +632,28 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.8rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', color: '#bbbbbb', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <span>EXPLORER</span>
-                    <span style={{ cursor: 'pointer', color: '#858585' }}>•••</span>
+                    <button
+                      type="button"
+                      onClick={() => loadRemoteRepoFiles()}
+                      title="Sync live files from GitHub repository"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: isLoadingGithubFiles ? '#38bdf8' : '#858585',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.2rem',
+                        fontSize: '0.68rem',
+                        padding: '2px 4px',
+                        borderRadius: '3px'
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: isLoadingGithubFiles ? 'spin 1s linear infinite' : 'none' }}>
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                      </svg>
+                      <span>{isLoadingGithubFiles ? 'Syncing...' : 'Sync GitHub'}</span>
+                    </button>
                   </div>
 
                   {/* Project Tree */}
@@ -528,6 +737,9 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                                 >
                                   <MaterialFileIcon fileName="SolutionPatch.tsx" size={15} />
                                   <span>SolutionPatch.tsx</span>
+                                  {files['SolutionPatch.tsx']?.content !== files['SolutionPatch.tsx']?.originalContent && (
+                                    <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -570,52 +782,46 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                                 >
                                   <MaterialFileIcon fileName="specs.test.ts" size={15} />
                                   <span>specs.test.ts</span>
+                                  {files['specs.test.ts']?.content !== files['specs.test.ts']?.originalContent && (
+                                    <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+                                  )}
                                 </div>
                               </div>
                             )}
                           </div>
                         )}
 
-                        {/* Root Files */}
-                        <div
-                          onClick={() => handleSelectFile('package.json')}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.45rem',
-                            padding: '0.3rem 0.5rem 0.3rem 1.4rem',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            background: activeFileName === 'package.json' ? '#04395e' : 'transparent',
-                            color: activeFileName === 'package.json' ? '#ffffff' : '#cccccc',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                        >
-                          <MaterialFileIcon fileName="package.json" size={15} />
-                          <span>package.json</span>
-                        </div>
-
-                        <div
-                          onClick={() => handleSelectFile('README.md')}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.45rem',
-                            padding: '0.3rem 0.5rem 0.3rem 1.4rem',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            background: activeFileName === 'README.md' ? '#04395e' : 'transparent',
-                            color: activeFileName === 'README.md' ? '#ffffff' : '#cccccc',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                        >
-                          <MaterialFileIcon fileName="README.md" size={15} />
-                          <span>README.md</span>
-                        </div>
+                        {/* Dynamic Root & Real Remote GitHub Repository Files */}
+                        {Object.entries(files)
+                          .filter(([fName]) => fName !== 'SolutionPatch.tsx' && fName !== 'specs.test.ts')
+                          .map(([fName, fileItem]) => {
+                            const isMod = fileItem.content !== fileItem.originalContent;
+                            return (
+                              <div
+                                key={fName}
+                                onClick={() => handleSelectFile(fName)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.45rem',
+                                  padding: '0.3rem 0.5rem 0.3rem 1.4rem',
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  background: activeFileName === fName ? '#04395e' : 'transparent',
+                                  color: activeFileName === fName ? '#ffffff' : '#cccccc',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                <MaterialFileIcon fileName={fName} size={15} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{fName}</span>
+                                {isMod && (
+                                  <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>M</span>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
                   </div>
@@ -749,6 +955,36 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
 
                 {/* Right Tab Toolbar: Sleek, Compact Professional Editor Icons */}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  {/* Diff View Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsDiffView(!isDiffView)}
+                    title={isDiffView ? "Switch to Normal Editor" : "Inspect Unified Diff against Remote GitHub Code"}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      height: '26px',
+                      padding: '0 0.55rem',
+                      background: isDiffView ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                      border: isDiffView ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                      color: isDiffView ? '#38bdf8' : '#cccccc',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="6" y1="3" x2="6" y2="15"/>
+                      <circle cx="18" cy="6" r="3"/>
+                      <circle cx="6" cy="18" r="3"/>
+                      <path d="M18 9a9 9 0 0 1-9 9"/>
+                    </svg>
+                    <span>{isDiffView ? 'Diff Active' : 'Diff View'}</span>
+                  </button>
+
                   {/* Split Live Preview Icon Button */}
                   <button
                     type="button"
@@ -870,38 +1106,63 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
                 <span>{activeFile.folder}</span>
                 <span>›</span>
                 <span style={{ color: '#cccccc' }}>{activeFileName}</span>
+                {isDiffView && (
+                  <span style={{ marginLeft: 'auto', color: '#38bdf8', fontSize: '0.68rem', fontWeight: 600 }}>
+                    Comparing with GitHub Remote Original
+                  </span>
+                )}
               </div>
 
               {/* Split Editor / Main Mount Box */}
               <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-                {/* Monaco Editor */}
+                {/* Monaco Editor / Diff Editor */}
                 <div style={{ flex: 1, height: '100%', position: 'relative' }}>
-                  <Editor
-                    height="100%"
-                    language={activeFile.language}
-                    theme="vs-dark"
-                    value={activeFile.content}
-                    onChange={(val) => {
-                      setFiles(prev => ({
-                        ...prev,
-                        [activeFileName]: { ...prev[activeFileName], content: val || '' }
-                      }));
-                    }}
-                    options={{
-                      minimap: { enabled: true },
-                      fontSize: 13,
-                      fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
-                      fontLigatures: true,
-                      lineNumbers: 'on',
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                      tabSize: 2,
-                      renderWhitespace: 'selection',
-                      bracketPairColorization: { enabled: true },
-                      cursorBlinking: 'smooth',
-                      smoothScrolling: true
-                    }}
-                  />
+                  {isDiffView ? (
+                    <DiffEditor
+                      height="100%"
+                      language={activeFile.language}
+                      theme="vs-dark"
+                      original={activeFile.originalContent || ''}
+                      modified={activeFile.content}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 13,
+                        fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
+                        lineNumbers: 'on',
+                        renderSideBySide: true,
+                        automaticLayout: true,
+                        readOnly: false,
+                        scrollBeyondLastLine: false
+                      }}
+                    />
+                  ) : (
+                    <Editor
+                      height="100%"
+                      language={activeFile.language}
+                      theme="vs-dark"
+                      value={activeFile.content}
+                      onChange={(val) => {
+                        setFiles(prev => ({
+                          ...prev,
+                          [activeFileName]: { ...prev[activeFileName], content: val || '' }
+                        }));
+                      }}
+                      options={{
+                        minimap: { enabled: true },
+                        fontSize: 13,
+                        fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
+                        fontLigatures: true,
+                        lineNumbers: 'on',
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        renderWhitespace: 'selection',
+                        bracketPairColorization: { enabled: true },
+                        cursorBlinking: 'smooth',
+                        smoothScrolling: true
+                      }}
+                    />
+                  )}
                 </div>
 
                 {/* Side-by-Side Live Website Previewer */}

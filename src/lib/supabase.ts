@@ -2,18 +2,65 @@ import { createClient } from '@supabase/supabase-js';
 import type { PullRequest, EmployeeState, ProblemIssue, EmployeeProgressRecord } from '../types';
 import { PROBLEMS_DATASET, ALL_REPOSITORIES } from './dataset';
 
-// Supabase Modern API Connection Credentials
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY 
-  || import.meta.env.VITE_SUPABASE_ANON_KEY 
-  || 'sb_publishable_dummy_key';
+// Detect Supabase credentials from .env or persistent user configuration
+function resolveSupabaseConfig() {
+  const envUrl = import.meta.env.VITE_SUPABASE_URL;
+  const envKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const isSupabaseConfigured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && 
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY)
+  let localUrl = '';
+  let localKey = '';
+  try {
+    localUrl = localStorage.getItem('vhq_supabase_url') || '';
+    localKey = localStorage.getItem('vhq_supabase_key') || '';
+  } catch (_) {}
+
+  const url = (envUrl || localUrl || '').trim();
+  const key = (envKey || localKey || '').trim();
+
+  const isConfigured = Boolean(
+    url &&
+    key &&
+    url.startsWith('https://') &&
+    !url.includes('xyzcompany') &&
+    !key.includes('dummy') &&
+    !key.includes('placeholder')
+  );
+
+  return { url, key, isConfigured };
+}
+
+let activeConfig = resolveSupabaseConfig();
+
+export let isSupabaseConfigured = activeConfig.isConfigured;
+export let supabase = createClient(
+  activeConfig.url || 'https://placeholder.supabase.co',
+  activeConfig.key || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    }
+  }
 );
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export function updateSupabaseConfig(url: string, key: string) {
+  try {
+    localStorage.setItem('vhq_supabase_url', url.trim());
+    localStorage.setItem('vhq_supabase_key', key.trim());
+  } catch (_) {}
+  activeConfig = { url: url.trim(), key: key.trim(), isConfigured: true };
+  isSupabaseConfigured = true;
+  supabase = createClient(url.trim(), key.trim(), {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    }
+  });
+}
 
 /**
  * Supabase Authentication Service (GitHub OAuth & Enterprise Credentials)
@@ -24,13 +71,17 @@ export const AuthService = {
       return { success: false, error: 'SUPABASE_NOT_CONFIGURED' };
     }
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const redirectUrl = `${window.location.origin}/`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: redirectUrl
         }
       });
       if (error) return { success: false, error: error.message };
+      if (data?.url) {
+        window.location.href = data.url;
+      }
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'OAuth failure' };
@@ -42,7 +93,23 @@ export const AuthService = {
       return { success: false, error: 'SUPABASE_NOT_CONFIGURED' };
     }
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      let targetEmail = email.trim().toLowerCase();
+
+      // Check if user entered their company-allotted corporate email or handle (e.g. jordan.hayes@virtualhq.corp or @username)
+      if (targetEmail.includes('@virtualhq.') || !targetEmail.includes('@')) {
+        const cleanHandle = targetEmail.replace(/^@/, '');
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .or(`corporate_email.eq.${targetEmail},handle.eq.${cleanHandle}`)
+          .maybeSingle();
+
+        if (profile?.email) {
+          targetEmail = profile.email;
+        }
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
       if (error) return { success: false, error: error.message };
       return { success: true, user: data.user };
     } catch (err: any) {
@@ -50,20 +117,39 @@ export const AuthService = {
     }
   },
 
-  async signUpWithEmail(email: string, password: string, fullName: string): Promise<{ success: boolean; error?: string; user?: any }> {
+  async signUpWithEmail(
+    email: string, 
+    password: string, 
+    fullName: string,
+    githubUsername?: string
+  ): Promise<{ success: boolean; error?: string; user?: any; corporateEmail?: string }> {
     if (!isSupabaseConfigured) {
       return { success: false, error: 'SUPABASE_NOT_CONFIGURED' };
     }
     try {
+      const cleanGh = (githubUsername || '').trim().replace(/^@/, '');
+      const avatarUrl = cleanGh ? `https://github.com/${cleanGh}.png` : '';
+
+      // Allot official corporate email to student based on their name or handle
+      const nameParts = fullName.trim().toLowerCase().split(/\s+/);
+      const cleanFirst = nameParts[0]?.replace(/[^a-z0-9]/g, '') || 'engineer';
+      const cleanLast = nameParts.length > 1 ? nameParts[nameParts.length - 1]?.replace(/[^a-z0-9]/g, '') : cleanGh || 'recruit';
+      const corporateEmail = `${cleanFirst}.${cleanLast}@virtualhq.corp`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName }
+          data: { 
+            full_name: fullName,
+            github_username: cleanGh,
+            avatar_url: avatarUrl,
+            corporate_email: corporateEmail
+          }
         }
       });
       if (error) return { success: false, error: error.message };
-      return { success: true, user: data.user };
+      return { success: true, user: data.user, corporateEmail };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -77,7 +163,12 @@ export const AuthService = {
         console.error('Sign out error:', e);
       }
     }
-    sessionStorage.removeItem('vhq_active_emp');
+    try {
+      localStorage.removeItem('vhq_active_emp');
+      sessionStorage.removeItem('vhq_active_emp');
+      localStorage.removeItem('vhq_active_session_v3');
+      localStorage.removeItem('vhq_scratchpad');
+    } catch (_) {}
   },
 
   async getSession() {
@@ -102,10 +193,13 @@ export const AuthService = {
  */
 export const CloudStorage = {
   async saveEmployee(data: EmployeeState): Promise<boolean> {
-    // Save to Supabase profiles table
     if (isSupabaseConfigured) {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const effectiveUserId = data.userId || user?.id;
+
         const { error } = await supabase.from('profiles').upsert({
+          user_id: effectiveUserId,
           emp_id: data.empId,
           full_name: data.fullName,
           preferred_name: data.preferredName,
@@ -115,9 +209,12 @@ export const CloudStorage = {
           role_level: data.selectedRole?.level,
           is_signed: data.isSigned,
           signature_url: data.signatureDataUrl,
-          auth_provider: data.authProvider || 'github',
+          auth_provider: data.authProvider || 'email',
           avatar_url: data.avatarUrl || '',
-          email: data.email || '',
+          email: data.email || user?.email || '',
+          corporate_email: data.corporateEmail || '',
+          github_username: data.githubUsername || data.handle || '',
+          total_xp: data.totalXp || 200,
           updated_at: new Date().toISOString()
         }, { onConflict: 'emp_id' });
 
@@ -129,73 +226,82 @@ export const CloudStorage = {
       }
     }
 
-    // Keep active session in memory/sessionStorage for instant page hydration
-    sessionStorage.setItem('vhq_active_emp', JSON.stringify(data));
+    try {
+      localStorage.setItem('vhq_active_emp', JSON.stringify(data));
+      sessionStorage.setItem('vhq_active_emp', JSON.stringify(data));
+    } catch (_) {}
     return true;
   },
 
+  /**
+   * Fetch authenticated employee profile directly from Supabase.
+   * STRICT: Returns null if no active Supabase user session exists (NO dummy fallbacks).
+   */
   async getEmployee(): Promise<EmployeeState | null> {
-    if (isSupabaseConfigured) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (!error && data) {
-            const role = PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering.find(r => r.title === data.role_title) 
-              || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0];
-
-            return {
-              fullName: data.full_name,
-              preferredName: data.preferred_name,
-              handle: data.handle,
-              empId: data.emp_id,
-              department: data.department,
-              selectedRole: role,
-              signatureDataUrl: data.signature_url || '',
-              isSigned: data.is_signed,
-              currentStep: 4,
-              email: data.email,
-              avatarUrl: data.avatar_url,
-              authProvider: data.auth_provider,
-              userId: data.user_id,
-              userType: 'employee',
-              totalXp: data.total_xp || 200
-            };
-          }
-        }
-      } catch (e) {
-        console.error('[Supabase Cloud] Error fetching user profile:', e);
-      }
+    if (!isSupabaseConfigured) {
+      return null;
     }
 
-    // Active session check
-    const raw = sessionStorage.getItem('vhq_active_emp');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (isSupabaseConfigured && parsed?.empId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // No authenticated session in Supabase — purge any stale local cache
         try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('total_xp')
-            .eq('emp_id', parsed.empId)
-            .maybeSingle();
-          if (data?.total_xp) {
-            parsed.totalXp = data.total_xp;
-          }
+          localStorage.removeItem('vhq_active_emp');
+          sessionStorage.removeItem('vhq_active_emp');
         } catch (_) {}
+        return null;
       }
-      return parsed;
+
+      // Query live profile by user_id
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        const role = PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering.find(r => r.title === data.role_title) 
+          || PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0];
+
+        const meta = user.user_metadata || {};
+        const profileEmp: EmployeeState = {
+          fullName: data.full_name,
+          preferredName: data.preferred_name,
+          handle: data.handle,
+          empId: data.emp_id,
+          department: data.department,
+          selectedRole: role,
+          signatureDataUrl: data.signature_url || '',
+          isSigned: Boolean(data.is_signed),
+          currentStep: data.is_signed ? 4 : 1,
+          email: data.email || user.email,
+          corporateEmail: data.corporate_email || meta.corporate_email || '',
+          githubUsername: data.github_username || meta.github_username || data.handle || '',
+          avatarUrl: data.avatar_url || meta.avatar_url || '',
+          authProvider: data.auth_provider || 'email',
+          userId: data.user_id,
+          userType: 'employee',
+          totalXp: data.total_xp || 200
+        };
+
+        try {
+          localStorage.setItem('vhq_active_emp', JSON.stringify(profileEmp));
+        } catch (_) {}
+        return profileEmp;
+      }
+    } catch (e) {
+      console.error('[Supabase Cloud] Error fetching user profile:', e);
     }
+
     return null;
   },
 
   async clearEmployee(): Promise<void> {
-    sessionStorage.removeItem('vhq_active_emp');
+    try {
+      localStorage.removeItem('vhq_active_emp');
+      sessionStorage.removeItem('vhq_active_emp');
+    } catch (_) {}
   },
 
   async savePullRequest(prData: PullRequest): Promise<boolean> {
@@ -212,7 +318,8 @@ export const CloudStorage = {
           author_dept: prData.authorDept,
           status: prData.status,
           code_patch: prData.codePatch,
-          modified_code: prData.codePatch,
+          original_code: prData.originalCode || '',
+          modified_code: prData.modifiedCode || prData.codePatch || '',
           submission_type: prData.submissionType || 'monaco',
           zip_meta: prData.zipMeta,
           review_feedback: prData.reviewFeedback,
@@ -254,6 +361,8 @@ export const CloudStorage = {
             authorDept: row.author_dept,
             status: row.status,
             codePatch: row.code_patch,
+            originalCode: row.original_code,
+            modifiedCode: row.modified_code,
             submissionType: row.submission_type,
             zipMeta: row.zip_meta,
             reviewFeedback: row.review_feedback,

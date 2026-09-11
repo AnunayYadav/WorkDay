@@ -395,7 +395,9 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
             </div>
             <div className="user-id-info">
               <span className="user-full-name" id="sideUserName">{employee.fullName}</span>
-              <span className="user-role-label" id="sideUserRole">{employee.selectedRole?.title}</span>
+              <span className="user-role-label mono" style={{ fontSize: '0.68rem', color: '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={employee.corporateEmail || `${employee.handle}@virtualhq.corp`}>
+                {employee.corporateEmail || `${employee.handle}@virtualhq.corp`}
+              </span>
             </div>
           </div>
           <button
@@ -433,10 +435,16 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
           </div>
 
           <div className="stage-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            {employee.authProvider === 'github' && (
+            {employee.corporateEmail && (
+              <span className="mono" style={{ fontSize: '0.68rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.08)', padding: '0.2rem 0.55rem', borderRadius: '6px', border: '1px solid rgba(56, 189, 248, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} title={`Allotted Enterprise Identity: ${employee.corporateEmail}`}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#38bdf8' }}></span>
+                {employee.corporateEmail}
+              </span>
+            )}
+            {employee.githubUsername && (
               <span className="mono" style={{ fontSize: '0.65rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
-                GitHub Synced
+                @{employee.githubUsername}
               </span>
             )}
             {employee.userType === 'manager' && (

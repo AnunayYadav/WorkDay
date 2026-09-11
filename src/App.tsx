@@ -15,34 +15,67 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<'landing' | 'workspace'>('landing');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingOnboardAfterAuth, setPendingOnboardAfterAuth] = useState(false);
   const [activeStudioIssue, setActiveStudioIssue] = useState<ProblemIssue | null>(null);
 
-  // Load employee profile on startup
+  // Load employee profile on startup and auto-navigate only if real active Supabase session exists
   useEffect(() => {
-    CloudStorage.getEmployee().then(saved => {
-      if (saved) {
-        setEmployee(saved);
-      }
-    });
+    let isMounted = true;
 
-    // Listen to Supabase Auth State changes (e.g. GitHub OAuth callback)
-    const authListener = AuthService.onAuthStateChange(async (_event, session) => {
+    const initAuth = async () => {
+      const session = await AuthService.getSession();
+      if (!session?.user) {
+        // Unauthenticated! Stay strictly on landing page, clear any orphaned state
+        await CloudStorage.clearEmployee();
+        if (isMounted) {
+          setEmployee(null);
+          setCurrentView('landing');
+        }
+        return;
+      }
+
+      // Live Supabase authenticated session exists
+      const saved = await CloudStorage.getEmployee();
+      if (isMounted && saved) {
+        setEmployee(saved);
+        if (saved.isSigned) {
+          setCurrentView('workspace');
+        } else {
+          setIsOnboardingOpen(true);
+        }
+      }
+    };
+
+    initAuth();
+
+    // Listen to Supabase Auth State changes (e.g. GitHub OAuth callback redirect)
+    const authListener = AuthService.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
       if (session?.user) {
         const user = session.user;
+        const existing = await CloudStorage.getEmployee();
+        if (existing && existing.isSigned) {
+          setEmployee(existing);
+          setIsAuthModalOpen(false);
+          setCurrentView('workspace');
+          return;
+        }
+
         const meta = user.user_metadata || {};
-        const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'VirtualHQ Engineer';
+        const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || '';
         const defaultRole = PROBLEMS_DATASET.DEPARTMENT_ROLES.engineering[0];
 
         const oauthEmp: EmployeeState = {
           fullName,
-          preferredName: fullName.split(' ')[0],
-          handle: (meta.user_name || meta.preferred_username || user.email?.split('@')[0] || 'engineer').toLowerCase(),
-          empId: `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
+          preferredName: fullName ? fullName.split(' ')[0] : '',
+          handle: (meta.user_name || meta.preferred_username || user.email?.split('@')[0] || '').toLowerCase(),
+          empId: existing?.empId || `VHQ-${Math.floor(1000 + Math.random() * 9000)}`,
           department: 'engineering',
-          selectedRole: defaultRole,
-          signatureDataUrl: '',
-          isSigned: true,
-          currentStep: 4,
+          selectedRole: existing?.selectedRole || defaultRole,
+          signatureDataUrl: existing?.signatureDataUrl || '',
+          isSigned: Boolean(existing?.isSigned),
+          currentStep: existing?.isSigned ? 4 : 1,
           email: user.email,
           avatarUrl: meta.avatar_url,
           authProvider: 'github',
@@ -51,20 +84,58 @@ function AppContent() {
         };
 
         setEmployee(oauthEmp);
-        await CloudStorage.saveEmployee(oauthEmp);
-        setCurrentView('workspace');
-        showToast({
-          title: 'GitHub SSO Verified',
-          message: `Authenticated as ${oauthEmp.fullName} (${oauthEmp.empId}).`,
-          type: 'success'
-        });
+        setIsAuthModalOpen(false);
+
+        if (oauthEmp.isSigned) {
+          await CloudStorage.saveEmployee(oauthEmp);
+          setCurrentView('workspace');
+          showToast({
+            title: 'GitHub Verified',
+            message: `Authenticated as ${oauthEmp.fullName} (${oauthEmp.empId}).`,
+            type: 'success'
+          });
+        } else {
+          // Open onboarding to pick role and sign contract
+          setIsOnboardingOpen(true);
+          showToast({
+            title: 'GitHub Verified',
+            message: `Welcome ${oauthEmp.fullName || 'Engineer'}! Complete your specialization onboarding and contract signature.`,
+            type: 'info'
+          });
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setEmployee(null);
+        setCurrentView('landing');
       }
     });
 
     return () => {
+      isMounted = false;
       authListener?.data?.subscription?.unsubscribe();
     };
   }, []);
+
+  // When user clicks "Get Started" / "Start Onboarding" on landing page
+  const handleStartOnboarding = () => {
+    if (employee && employee.isSigned) {
+      setCurrentView('workspace');
+      return;
+    }
+
+    if (employee && !employee.isSigned) {
+      setIsOnboardingOpen(true);
+      return;
+    }
+
+    // Must authenticate first
+    setPendingOnboardAfterAuth(true);
+    setIsAuthModalOpen(true);
+    showToast({
+      title: 'Authentication Required',
+      message: 'Please sign in or create an account to begin official corporate onboarding.',
+      type: 'info'
+    });
+  };
 
   const handleCompleteOnboarding = async (newEmp: EmployeeState) => {
     setEmployee(newEmp);
@@ -80,9 +151,25 @@ function AppContent() {
 
   const handleAuthenticated = async (authEmp: EmployeeState) => {
     setEmployee(authEmp);
-    await CloudStorage.saveEmployee(authEmp);
     setIsAuthModalOpen(false);
-    setCurrentView('workspace');
+
+    if (pendingOnboardAfterAuth || !authEmp.isSigned) {
+      setPendingOnboardAfterAuth(false);
+      setIsOnboardingOpen(true);
+      showToast({
+        title: 'Authentication Successful',
+        message: `Welcome, ${authEmp.fullName}! Proceed to complete your role onboarding.`,
+        type: 'success'
+      });
+    } else {
+      await CloudStorage.saveEmployee(authEmp);
+      setCurrentView('workspace');
+      showToast({
+        title: 'Welcome Back',
+        message: `Signed in as ${authEmp.fullName}.`,
+        type: 'success'
+      });
+    }
   };
 
   const handleOpenStudio = (issue: ProblemIssue) => {
@@ -102,8 +189,11 @@ function AppContent() {
       {/* 1. Landing View */}
       {currentView === 'landing' && (
         <LandingView
-          onOpenOnboard={() => setIsOnboardingOpen(true)}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenOnboard={handleStartOnboarding}
+          onOpenAuth={() => {
+            setPendingOnboardAfterAuth(false);
+            setIsAuthModalOpen(true);
+          }}
         />
       )}
 
@@ -144,8 +234,12 @@ function AppContent() {
       {/* Enterprise SSO / GitHub Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingOnboardAfterAuth(false);
+        }}
         onAuthenticated={handleAuthenticated}
+        isForOnboarding={pendingOnboardAfterAuth}
       />
     </>
   );
