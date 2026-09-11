@@ -119,6 +119,61 @@ export interface ProblemIssue {
   role_heading?: string;
 }
 
+export function taskItemToProblemIssue(task: TaskItem): ProblemIssue {
+  let issueNo = task.issueNo || '';
+  if (!issueNo || issueNo.startsWith('#T-') || issueNo.startsWith('T-')) {
+    const match = task.title.match(/\[#?(\d+)\]/);
+    if (match) {
+      issueNo = match[1];
+    } else {
+      issueNo = task.issueNo?.replace(/^#/, '') || '41';
+    }
+  } else {
+    issueNo = issueNo.replace(/^#/, '');
+  }
+
+  let repo = task.repo || 'enterprise-core';
+  const inRepoMatch = (task.description || '').match(/in\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/i) || 
+                      (task.title || '').match(/in\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/i);
+  if (inRepoMatch) {
+    repo = inRepoMatch[1];
+  } else {
+    const titleParenMatch = task.title.match(/\(([^)]+)\)$/);
+    if (titleParenMatch && (!task.repo || task.repo === 'enterprise-core')) {
+      repo = titleParenMatch[1].includes('/') ? titleParenMatch[1] : `Dezenix/${titleParenMatch[1]}`;
+    }
+  }
+
+  let level = 'Medium';
+  const levelMatch = task.title.match(/·\s*(Easy|Medium|Hard)/i);
+  if (levelMatch) {
+    level = levelMatch[1].charAt(0).toUpperCase() + levelMatch[1].slice(1).toLowerCase();
+  } else if (task.priority === 'critical') {
+    level = 'Hard';
+  } else if (task.priority === 'high') {
+    level = 'Medium';
+  } else if (task.priority === 'low') {
+    level = 'Easy';
+  }
+
+  let role = task.title;
+  const roleMatch = task.title.match(/\[#\d+\]\s*([^·]+)/);
+  if (roleMatch) {
+    role = roleMatch[1].trim();
+  }
+
+  return {
+    s_no: task.id,
+    issue_no: issueNo,
+    level,
+    role,
+    repo,
+    url: repo && issueNo ? `https://github.com/${repo}/issues/${issueNo}` : 'https://github.com',
+    role_heading: task.title
+  };
+}
+
+
 export interface Repository {
   repo: string;
   name: string;

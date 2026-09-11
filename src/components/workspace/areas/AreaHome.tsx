@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import type { EmployeeState, ProblemIssue } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import type { EmployeeState, ProblemIssue, TaskItem } from '../../../types';
+import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaHomeProps {
   employee: EmployeeState;
@@ -23,6 +24,21 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
   const [scratchpad, setScratchpad] = useState<string>(
     localStorage.getItem('vhq_scratchpad') || 'Standup notes: Reviewing sprint issues and API specifications.'
   );
+  const [managerTasks, setManagerTasks] = useState<TaskItem[]>([]);
+
+  useEffect(() => {
+    if (employee?.empId) {
+      CloudStorage.listAssignedTasks(employee.empId).then(tasks => {
+        setManagerTasks(tasks.filter(t => t.status !== 'completed'));
+      });
+      const unsub = CloudStorage.subscribeToTasks(() => {
+        CloudStorage.listAssignedTasks(employee.empId).then(tasks => {
+          setManagerTasks(tasks.filter(t => t.status !== 'completed'));
+        });
+      });
+      return () => { unsub(); };
+    }
+  }, [employee?.empId]);
 
   const handleScratchpadChange = (val: string) => {
     setScratchpad(val);
@@ -38,7 +54,7 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
           Good morning, {employee.preferredName || 'Engineer'}.
         </h1>
         <p className="area-subtitle" id="homeSprintSubtitle">
-          Sprint 01 Focus · {activeTask ? '1' : '0'} Active Deliverable Assigned · {completedCount} Completed
+          Sprint 01 Focus · {(activeTask ? 1 : 0) + managerTasks.length} Active Deliverable{((activeTask ? 1 : 0) + managerTasks.length) !== 1 ? 's' : ''} Assigned · {completedCount} Completed
         </p>
       </div>
 
@@ -130,7 +146,7 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
               </div>
             </div>
           </div>
-        ) : (
+        ) : managerTasks.length === 0 ? (
           <div className="executive-card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', margin: 0 }}>
             <div style={{
               width: '44px',
@@ -159,14 +175,112 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
               Your sprint desk is clear. Deliverables assigned in Supabase will populate here in real-time.
             </p>
           </div>
-        )}
+        ) : null}
       </div>
+
+      {/* Manager-Assigned Active Sprint Tasks */}
+      {managerTasks.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: activeTask ? '1rem' : 0 }}>
+          <div className="card-kicker-row" style={{ marginBottom: '0.25rem' }}>
+            <span className="card-kicker">ACTIVE SPRINT TASKS (MANAGER ASSIGNED)</span>
+            <span className="badge-live">LIVE</span>
+          </div>
+          {managerTasks.map(task => {
+            const priorityColors: Record<string, { bg: string; color: string; border: string }> = {
+              critical: { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
+              high: { bg: 'rgba(249, 115, 22, 0.15)', color: '#fb923c', border: 'rgba(249, 115, 22, 0.3)' },
+              medium: { bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' },
+              low: { bg: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
+            };
+            const pStyle = priorityColors[task.priority] || priorityColors.medium;
+            const statusLabels: Record<string, { label: string; color: string }> = {
+              todo: { label: 'TO DO', color: '#a1a1aa' },
+              in_progress: { label: 'IN PROGRESS', color: '#38bdf8' },
+              review: { label: 'IN REVIEW', color: '#a78bfa' },
+              completed: { label: 'DELIVERED', color: '#4ade80' },
+            };
+            const sStyle = statusLabels[task.status] || statusLabels.todo;
+
+            return (
+              <div
+                key={task.id}
+                className="active-task-hero-card"
+                style={{
+                  borderLeft: `3px solid ${pStyle.color}`,
+                  padding: '1.25rem 1.5rem',
+                }}
+              >
+                <div className="hero-task-topline">
+                  <div className="hero-task-badges">
+                    <span className="badge-sprint-active">
+                      <span className="pulse-dot"></span>
+                      ACTIVE SPRINT
+                    </span>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      padding: '0.18rem 0.5rem',
+                      borderRadius: '5px',
+                      background: pStyle.bg,
+                      color: pStyle.color,
+                      border: `1px solid ${pStyle.border}`,
+                      textTransform: 'uppercase'
+                    }}>
+                      {task.priority}
+                    </span>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      padding: '0.18rem 0.5rem',
+                      borderRadius: '5px',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      color: sStyle.color,
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                      {sStyle.label}
+                    </span>
+                    {task.repo && (
+                      <span className="badge-repo-link" style={{ cursor: 'default' }}>
+                        <span>{task.repo} · {task.issueNo || 'TASK'}</span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="mono" style={{ fontSize: '0.75rem', color: '#64748b' }}>Assigned by {task.assignedByName || 'Manager'}</span>
+                </div>
+
+                <h2 className="hero-task-title" style={{ fontSize: '1.15rem' }}>
+                  {task.title}
+                </h2>
+                {task.description && (
+                  <p className="hero-task-desc">{task.description}</p>
+                )}
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.25rem',
+                  fontSize: '0.75rem',
+                  color: '#71717a',
+                  marginTop: '0.5rem',
+                  flexWrap: 'wrap'
+                }}>
+                  {task.dueDate && (
+                    <span>📅 Due: <strong style={{ color: '#fb923c' }}>{task.dueDate}</strong></span>
+                  )}
+                  <span className="mono">Assigned: {new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Real Sprint Telemetry Strip */}
       <div className="sprint-telemetry-strip">
         <div className="telemetry-box">
           <span className="t-label">ASSIGNED DELIVERABLES</span>
-          <span className="t-val" id="homeMetricAssigned">{activeTask ? '1 Active' : '0 Active'}</span>
+          <span className="t-val" id="homeMetricAssigned">{(activeTask ? 1 : 0) + managerTasks.length} Active</span>
         </div>
         <div className="telemetry-box">
           <span className="t-label">COMPLETED &amp; MERGED</span>

@@ -48,7 +48,7 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
               className={`filter-chip ${taskFilter === 'active' ? 'active' : ''}`}
               onClick={() => setTaskFilter('active')}
             >
-              Current Active (<span id="taskCountActive">{activeTask ? '1' : '0'}</span>)
+              Current Active (<span id="taskCountActive">{(activeTask ? 1 : 0) + assignedTasks.filter(t => t.status !== 'completed').length}</span>)
             </button>
             <button
               type="button"
@@ -77,8 +77,9 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
         {/* 1. Active Task View Subpane */}
         {taskFilter === 'active' && (
           <div id="tasksViewActive" className="tasks-subview">
-            <div className="active-task-hero-card" id="tasksActiveCardContainer">
-              {activeTask ? (
+            {/* Dataset-based active task hero card */}
+            {activeTask && (
+              <div className="active-task-hero-card" id="tasksActiveCardContainer">
                 <div className="active-task-hero-card" style={{ margin: 0, border: 'none', background: 'transparent', padding: 0 }}>
                   <div className="hero-task-topline">
                     <div className="hero-task-badges">
@@ -164,7 +165,148 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                     </div>
                   </div>
                 </div>
-              ) : (
+              </div>
+            )}
+
+            {/* Manager-Assigned Active Tasks in Active View */}
+            {assignedTasks.filter(t => t.status !== 'completed').length > 0 && (
+              <div style={{ marginTop: activeTask ? '1.25rem' : 0, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div className="card-kicker-row" style={{ marginBottom: '0.15rem' }}>
+                  <span className="card-kicker">MANAGER ASSIGNED SPRINT TASKS</span>
+                  <span className="badge-live">LIVE</span>
+                </div>
+                {assignedTasks.filter(t => t.status !== 'completed').map(task => {
+                  const priorityColors: Record<string, { bg: string; color: string; border: string }> = {
+                    critical: { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
+                    high: { bg: 'rgba(249, 115, 22, 0.15)', color: '#fb923c', border: 'rgba(249, 115, 22, 0.3)' },
+                    medium: { bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' },
+                    low: { bg: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
+                  };
+                  const pStyle = priorityColors[task.priority] || priorityColors.medium;
+                  const statusLabels: Record<string, { label: string; color: string }> = {
+                    todo: { label: 'TO DO', color: '#a1a1aa' },
+                    in_progress: { label: 'IN PROGRESS', color: '#38bdf8' },
+                    review: { label: 'IN REVIEW', color: '#a78bfa' },
+                    completed: { label: 'DELIVERED', color: '#4ade80' },
+                  };
+                  const sStyle = statusLabels[task.status] || statusLabels.todo;
+
+                  const handleStatusChange = async (newStatus: TaskItem['status']) => {
+                    await CloudStorage.updateTaskStatus(task.id, newStatus);
+                    setAssignedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+                  };
+
+                  return (
+                    <div
+                      key={task.id}
+                      style={{
+                        background: '#0e1014',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderLeft: `3px solid ${pStyle.color}`,
+                        borderRadius: '12px',
+                        padding: '1.25rem 1.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <span className="badge-sprint-active">
+                            <span className="pulse-dot"></span>
+                            ACTIVE SPRINT
+                          </span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '5px',
+                            background: pStyle.bg,
+                            color: pStyle.color,
+                            border: `1px solid ${pStyle.border}`,
+                            textTransform: 'uppercase'
+                          }}>
+                            {task.priority} PRIORITY
+                          </span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            padding: '0.18rem 0.5rem',
+                            borderRadius: '5px',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            color: sStyle.color,
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                          }}>
+                            {sStyle.label}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#71717a' }}>Status:</span>
+                          <select
+                            value={task.status}
+                            onChange={(e) => handleStatusChange(e.target.value as TaskItem['status'])}
+                            style={{
+                              background: '#18181b',
+                              color: task.status === 'completed' ? '#4ade80' : '#ffffff',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '6px',
+                              padding: '0.25rem 0.6rem',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">In Review</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', margin: 0 }}>
+                        {task.title}
+                      </h3>
+
+                      {task.description && (
+                        <p style={{ fontSize: '0.85rem', color: '#a1a1aa', margin: 0, lineHeight: 1.5 }}>
+                          {task.description}
+                        </p>
+                      )}
+
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        paddingTop: '0.75rem',
+                        fontSize: '0.75rem',
+                        color: '#71717a',
+                        flexWrap: 'wrap',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <span>👤 Delegated by: <strong style={{ color: '#e4e4e7' }}>{task.assignedByName || task.assignedByEmpId}</strong></span>
+                          {task.dueDate && (
+                            <span>📅 Due: <strong style={{ color: '#fb923c' }}>{task.dueDate}</strong></span>
+                          )}
+                        </div>
+                        <span className="mono">
+                          Assigned: {new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Empty state when both are empty */}
+            {!activeTask && assignedTasks.filter(t => t.status !== 'completed').length === 0 && (
+              <div className="active-task-hero-card" id="tasksActiveCardContainer">
                 <div className="tasks-empty-state" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
                   <div style={{
                     width: '48px',
@@ -190,11 +332,11 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
                     No Active Sprint Deliverable Assigned
                   </div>
                   <div className="empty-sub" style={{ fontSize: '0.82rem', color: '#71717a', maxWidth: '380px', margin: '0 auto' }}>
-                    There are currently no active sprint tickets in Supabase. When deliverables are created or assigned, they will appear on your desk.
+                    There are currently no active sprint tickets. When deliverables are created or assigned by your manager, they will appear here.
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
