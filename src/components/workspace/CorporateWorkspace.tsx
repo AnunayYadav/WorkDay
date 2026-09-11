@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord, UserRoleType } from '../../types';
+import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord, UserRoleType, TaskItem } from '../../types';
 import { CloudStorage } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 
@@ -52,6 +52,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   const [roleProblems, setRoleProblems] = useState<ProblemIssue[]>([]);
   const [employeeProgress, setEmployeeProgress] = useState<EmployeeProgressRecord[]>([]);
   const [liveTime, setLiveTime] = useState<string>('10:45 AM');
+  const [managerTasks, setManagerTasks] = useState<TaskItem[]>([]);
 
   // Load pull requests on startup and subscribe to cloud realtime changes
   useEffect(() => {
@@ -94,6 +95,22 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     return () => {
       isMounted = false;
       sub.unsubscribe();
+    };
+  }, [employee.empId]);
+
+  // Fetch manager-assigned tasks from Supabase (centralized for AreaHome + AreaTasks)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTasks = () => {
+      CloudStorage.listAssignedTasks(employee.empId).then(tasks => {
+        if (isMounted) setManagerTasks(tasks);
+      });
+    };
+    fetchTasks();
+    const unsub = CloudStorage.subscribeToTasks(() => fetchTasks());
+    return () => {
+      isMounted = false;
+      unsub();
     };
   }, [employee.empId]);
 
@@ -778,6 +795,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               queuedTasks={queuedTasks}
               onOpenStudio={handleOpenStudioAndTrack}
               onNavigate={(area) => setActiveArea(area as TabType)}
+              managerTasks={managerTasks}
             />
           )}
 
@@ -798,6 +816,8 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               completedTasks={completedTasks}
               queuedTasks={queuedTasks}
               onOpenStudio={handleOpenStudioAndTrack}
+              managerTasks={managerTasks}
+              onUpdateManagerTasks={setManagerTasks}
             />
           )}
 

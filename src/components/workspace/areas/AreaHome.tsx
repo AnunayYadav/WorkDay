@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { EmployeeState, ProblemIssue, TaskItem } from '../../../types';
-import { CloudStorage } from '../../../lib/supabase';
 
 interface AreaHomeProps {
   employee: EmployeeState;
@@ -10,6 +9,7 @@ interface AreaHomeProps {
   queuedTasks: ProblemIssue[];
   onOpenStudio: (task: ProblemIssue) => void;
   onNavigate: (area: string) => void;
+  managerTasks?: TaskItem[];
 }
 
 export const AreaHome: React.FC<AreaHomeProps> = ({
@@ -19,26 +19,15 @@ export const AreaHome: React.FC<AreaHomeProps> = ({
   totalXp,
   queuedTasks,
   onOpenStudio,
-  onNavigate
+  onNavigate,
+  managerTasks: allManagerTasks = []
 }) => {
   const [scratchpad, setScratchpad] = useState<string>(
     localStorage.getItem('vhq_scratchpad') || 'Standup notes: Reviewing sprint issues and API specifications.'
   );
-  const [managerTasks, setManagerTasks] = useState<TaskItem[]>([]);
 
-  useEffect(() => {
-    if (employee?.empId) {
-      CloudStorage.listAssignedTasks(employee.empId).then(tasks => {
-        setManagerTasks(tasks.filter(t => t.status !== 'completed'));
-      });
-      const unsub = CloudStorage.subscribeToTasks(() => {
-        CloudStorage.listAssignedTasks(employee.empId).then(tasks => {
-          setManagerTasks(tasks.filter(t => t.status !== 'completed'));
-        });
-      });
-      return () => { unsub(); };
-    }
-  }, [employee?.empId]);
+  // Filter to only active (non-completed) manager tasks for display
+  const managerTasks = allManagerTasks.filter(t => t.status !== 'completed');
 
   const handleScratchpadChange = (val: string) => {
     setScratchpad(val);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { ProblemIssue, EmployeeState, TaskItem } from '../../../types';
 import { CloudStorage } from '../../../lib/supabase';
 
@@ -8,6 +8,8 @@ interface AreaTasksProps {
   queuedTasks: ProblemIssue[];
   onOpenStudio: (task: ProblemIssue) => void;
   employee?: EmployeeState;
+  managerTasks?: TaskItem[];
+  onUpdateManagerTasks?: (tasks: TaskItem[]) => void;
 }
 
 export const AreaTasks: React.FC<AreaTasksProps> = ({
@@ -15,20 +17,12 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
   completedTasks,
   queuedTasks,
   onOpenStudio,
-  employee
+  employee,
+  managerTasks: assignedTasks = [],
+  onUpdateManagerTasks: setAssignedTasks = () => {}
 }) => {
   const [taskFilter, setTaskFilter] = useState<'active' | 'assigned' | 'completed' | 'backlog'>('active');
-  const [assignedTasks, setAssignedTasks] = useState<TaskItem[]>([]);
 
-  useEffect(() => {
-    if (employee?.empId) {
-      CloudStorage.listAssignedTasks(employee.empId).then(setAssignedTasks);
-      const unsub = CloudStorage.subscribeToTasks(() => {
-        CloudStorage.listAssignedTasks(employee.empId).then(setAssignedTasks);
-      });
-      return () => { unsub(); };
-    }
-  }, [employee?.empId]);
 
   const lvl = (activeTask?.level || 'Easy').toLowerCase();
 
@@ -206,7 +200,7 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
 
                   const handleStatusChange = async (newStatus: TaskItem['status']) => {
                     await CloudStorage.updateTaskStatus(task.id, newStatus);
-                    setAssignedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+                    setAssignedTasks(assignedTasks.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
                   };
 
                   return (
@@ -395,7 +389,7 @@ export const AreaTasks: React.FC<AreaTasksProps> = ({
 
                   const handleStatusChange = async (newStatus: TaskItem['status']) => {
                     await CloudStorage.updateTaskStatus(task.id, newStatus);
-                    setAssignedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+                    setAssignedTasks(assignedTasks.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
                   };
 
                   return (
