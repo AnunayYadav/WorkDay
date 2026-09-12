@@ -19,12 +19,6 @@ interface DispatchMessage {
   createdAt?: string;
 }
 
-const FALLBACK_TEAMMATES = [
-  { empId: 'WD-DEVON-01', fullName: 'Devon Reed', role: 'Staff Frontend Engineer' },
-  { empId: 'WD-SARAH-02', fullName: 'Sarah Chen', role: 'UI/UX Technologist' },
-  { empId: 'WD-LIAM-03', fullName: 'Liam K.', role: 'QA & Reliability Lead' }
-];
-
 export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
   employee,
   onNavigateTab
@@ -63,7 +57,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
           id: `${p.repo}#${p.issue_no}`,
           issueNo: p.issue_no,
           repo: p.repo,
-          title: `[#${p.issue_no}] ${r.title} · ${p.level} (${p.repo.split('/')[1] || p.repo})`,
+          title: `${r.title} — Deliverable #${p.issue_no}`,
           level: p.level as any,
           role: r.title,
           url: p.url,
@@ -238,8 +232,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
       targetEmpId = 'unassigned';
     } else {
       const foundSquad = squadMembers.find(m => m.empId === targetEmpId);
-      const foundFallback = FALLBACK_TEAMMATES.find(t => t.empId === targetEmpId);
-      targetAssigneeName = foundSquad?.fullName || foundFallback?.fullName || 'Squad Engineer';
+      targetAssigneeName = foundSquad?.fullName || 'Squad Engineer';
     }
 
     const dueFormatted = formatDisplayDeadline(taskDueDate);
@@ -304,9 +297,9 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
     e.preventDefault();
     setSavingMeeting(true);
 
-    const link = meetingPlatform === 'meet'
-      ? `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`
-      : `https://zoom.us/j/${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+    const companyClean = (employee.companyName || 'corp').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const roomSlug = `${meetingTitle.trim().replace(/\s+/g, '-').toLowerCase()}-${Date.now().toString(36)}`;
+    const link = `https://meet.jit.si/WorkDay-${companyClean}-${roomSlug}`;
 
     const meetingId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `meet-${Date.now()}`;
     const scheduleTimeStr = meetingDate.trim() || 'Today at 3:00 PM EST';
@@ -1053,7 +1046,7 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                 <option value="#engineering">#engineering (Tech)</option>
                 {squadMembers.map(m => (
                   <option key={m.empId} value={m.empId}>
-                    👤 {m.fullName}
+                    {m.fullName}
                   </option>
                 ))}
               </select>
@@ -1165,13 +1158,8 @@ export const AreaManagerDashboard: React.FC<AreaManagerDashboardProps> = ({
                       ))}
                     </optgroup>
                   )}
-                  <optgroup label="Squad Backlog & Core Engineers">
+                  <optgroup label="Sprint Backlog">
                     <option value="unassigned">Sprint Backlog (Unassigned / Any Engineer)</option>
-                    {FALLBACK_TEAMMATES.map(t => (
-                      <option key={t.empId} value={t.empId}>
-                        {t.fullName} ({t.role})
-                      </option>
-                    ))}
                   </optgroup>
                   <option value="custom_assignee">+ Assign by Custom Name or Email...</option>
                 </select>

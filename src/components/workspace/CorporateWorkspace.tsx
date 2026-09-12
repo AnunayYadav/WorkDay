@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { EmployeeState, ProblemIssue, PullRequest, EmployeeProgressRecord, UserRoleType, TaskItem } from '../../types';
 import { CloudStorage } from '../../lib/supabase';
-import { useToast } from '../../lib/toast';
 
 import { AreaHome } from './areas/AreaHome';
 import { AreaJourney } from './areas/AreaJourney';
@@ -15,6 +14,7 @@ import { AreaMeetings } from './areas/AreaMeetings';
 import { AreaCompany } from './areas/AreaCompany';
 import { AreaManagerDashboard } from './areas/AreaManagerDashboard';
 import { AreaHRDashboard } from './areas/AreaHRDashboard';
+import { Building2, Users, Shield, Code } from 'lucide-react';
 
 interface CorporateWorkspaceProps {
   employee: EmployeeState;
@@ -41,7 +41,6 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
   onOpenStudio,
   onSignOut
 }) => {
-  const { showToast } = useToast();
   const currentRole: UserRoleType = employee.userType || 'employee';
   const [activeArea, setActiveArea] = useState<TabType>(() => {
     if (employee.userType === 'manager') return 'manager_dashboard';
@@ -147,44 +146,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
     onOpenStudio(task);
   };
 
-  // Manager PR actions
-  const handleApprovePr = async (pr: PullRequest, feedback: string) => {
-    const finalFb = feedback.trim() || 'Code review passed all benchmarks. Approved & merged.';
-    const updated: PullRequest = {
-      ...pr,
-      status: 'approved_merged',
-      reviewFeedback: finalFb,
-      reviewedBy: employee.selectedRole?.manager?.name || 'Marcus Vance',
-      reviewedAt: new Date().toISOString()
-    };
-    await CloudStorage.savePullRequest(updated);
-    await CloudStorage.recordTaskCompletion(employee.empId, pr.repo, pr.issue_no, pr.id, 50);
-    const refreshed = await CloudStorage.listPullRequests();
-    setPullRequests(refreshed);
-    showToast({
-      title: 'PR Approved & Merged',
-      message: `${pr.id} merged into main! +50 XP granted.`,
-      type: 'success'
-    });
-  };
 
-  const handleRequestChangesPr = async (pr: PullRequest, feedback: string) => {
-    if (!feedback.trim()) {
-      showToast({ title: 'Feedback Required', message: 'Please add review comments before requesting changes.', type: 'warning' });
-      return;
-    }
-    const updated: PullRequest = {
-      ...pr,
-      status: 'changes_requested',
-      reviewFeedback: feedback.trim(),
-      reviewedBy: employee.selectedRole?.manager?.name || 'Marcus Vance',
-      reviewedAt: new Date().toISOString()
-    };
-    await CloudStorage.savePullRequest(updated);
-    const refreshed = await CloudStorage.listPullRequests();
-    setPullRequests(refreshed);
-    showToast({ title: 'Changes Requested', message: `Returned ${pr.id} to author with feedback.`, type: 'info' });
-  };
 
   const areaTitles: Record<TabType, string> = {
     home: 'My Desk',
@@ -583,12 +545,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
                       <circle cx="12" cy="7" r="4"/>
                     </svg>
                   </div>
-                  <span className="nav-label">Manager Review</span>
-                  {pendingPrCount > 0 && (
-                    <span className="event-badge live" style={{ marginLeft: 'auto' }}>
-                      {pendingPrCount}
-                    </span>
-                  )}
+                  <span className="nav-label">My Manager</span>
                 </button>
 
                 <button
@@ -689,29 +646,17 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
             {/* Active Company Badge */}
             <span style={{
               fontSize: '0.72rem',
-              color: '#ffffff',
-              background: 'rgba(255, 255, 255, 0.08)',
+              color: '#d4d4d8',
+              background: 'rgba(255, 255, 255, 0.04)',
               padding: '0.25rem 0.65rem',
               borderRadius: '6px',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.45rem',
-              fontWeight: 600
+              fontWeight: 500
             }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="16" height="20" x="4" y="2" rx="2" ry="2" />
-                <path d="M9 22v-4h6v4" />
-                <path d="M8 6h.01" />
-                <path d="M16 6h.01" />
-                <path d="M12 6h.01" />
-                <path d="M12 10h.01" />
-                <path d="M12 14h.01" />
-                <path d="M16 10h.01" />
-                <path d="M16 14h.01" />
-                <path d="M8 10h.01" />
-                <path d="M8 14h.01" />
-              </svg>
+              <Building2 size={12} className="text-zinc-400" />
               {employee.companyName || 'Stripe'}
             </span>
 
@@ -720,66 +665,60 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
-              padding: '0.25rem 0.65rem',
+              padding: '0.25rem 0.6rem',
               borderRadius: '6px',
               fontSize: '0.72rem',
-              fontWeight: 600,
-              letterSpacing: '0.02em',
-              background: currentRole === 'manager'
-                ? 'rgba(59, 130, 246, 0.12)'
-                : currentRole === 'hr'
-                  ? 'rgba(245, 158, 11, 0.12)'
-                  : 'rgba(16, 185, 129, 0.12)',
-              border: `1px solid ${
-                currentRole === 'manager'
-                  ? 'rgba(59, 130, 246, 0.3)'
-                  : currentRole === 'hr'
-                    ? 'rgba(245, 158, 11, 0.3)'
-                    : 'rgba(16, 185, 129, 0.3)'
-              }`,
-              color: currentRole === 'manager'
-                ? '#60a5fa'
-                : currentRole === 'hr'
-                  ? '#fbbf24'
-                  : '#34d399'
-            }} title={`Authenticated Access Clearance: ${currentRole.toUpperCase()}`}>
+              fontWeight: 500,
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              color: '#d4d4d8'
+            }} title={`Role: ${currentRole.toUpperCase()}`}>
               {currentRole === 'manager' ? (
                 <>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
+                  <Users size={12} className="text-zinc-400" />
                   <span>Manager</span>
                 </>
               ) : currentRole === 'hr' ? (
                 <>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    <path d="m9 12 2 2 4-4" />
-                  </svg>
+                  <Shield size={12} className="text-zinc-400" />
                   <span>HR Lead</span>
                 </>
               ) : (
                 <>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="16 18 22 12 16 6" />
-                    <polyline points="8 6 2 12 8 18" />
-                  </svg>
-                  <span>Employee</span>
+                  <Code size={12} className="text-zinc-400" />
+                  <span>Engineer</span>
                 </>
               )}
             </div>
 
             {employee.corporateEmail && (
-              <span style={{ fontSize: '0.72rem', color: '#e4e4e7', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 500 }} title={`Allotted Enterprise Identity: ${employee.corporateEmail}`}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }}></span>
+              <span style={{
+                fontSize: '0.72rem',
+                color: '#a1a1aa',
+                background: 'rgba(255, 255, 255, 0.03)',
+                padding: '0.25rem 0.65rem',
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                fontWeight: 400
+              }} title={`Corporate Identity: ${employee.corporateEmail}`}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#52525b' }}></span>
                 {employee.corporateEmail}
               </span>
             )}
-            <div className="corporate-clock" style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.8rem' }}>
-              <span className="c-time" id="stageLiveClock">{liveTime}</span>
+
+            <div style={{
+              fontSize: '0.72rem',
+              fontFamily: 'monospace',
+              color: '#71717a',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '6px'
+            }}>
+              <span id="stageLiveClock">{liveTime}</span>
             </div>
           </div>
         </header>
@@ -850,9 +789,7 @@ export const CorporateWorkspace: React.FC<CorporateWorkspaceProps> = ({
           {activeArea === 'manager' && (
             <AreaManager
               employee={{ ...employee, userType: currentRole }}
-              pullRequests={pullRequests}
-              onApprovePr={handleApprovePr}
-              onRequestChangesPr={handleRequestChangesPr}
+              pullRequests={pullRequests.filter(p => p.author === employee.fullName || p.authorRole === employee.selectedRole?.title)}
             />
           )}
 

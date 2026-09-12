@@ -78,7 +78,9 @@ export const AreaMeetings: React.FC<AreaMeetingsProps> = ({ employee }) => {
       return;
     }
 
-    const cleanLink = meetLink.trim() || (platform === 'zoom' ? 'https://zoom.us/join' : 'https://meet.google.com/new');
+    const companyClean = (employee.companyName || 'corp').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const roomSlug = `${meetTitle.trim().replace(/\s+/g, '-').toLowerCase()}-${Date.now().toString(36)}`;
+    const cleanLink = meetLink.trim() || `https://meet.jit.si/WorkDay-${companyClean}-${roomSlug}`;
     const agendaList = agendaText.split('\n').map(s => s.trim()).filter(Boolean);
 
     const newMeeting = {

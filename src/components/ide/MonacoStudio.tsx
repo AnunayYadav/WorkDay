@@ -2187,9 +2187,9 @@ export const MonacoStudio: React.FC<MonacoStudioProps> = ({
             </div>
 
             <div className="next-task-unlocked-card">
-              <span className="kicker mono">DISPATCH STATUS:</span>
-              <div className="next-task-name">Sent to Real Manager Review Dashboard</div>
-              <div className="next-task-meta mono">Check "Real Manager Review" tab in the left sidebar to approve &amp; merge</div>
+              <span className="kicker mono">REVIEW STATUS:</span>
+              <div className="next-task-name">Submitted to Lead Manager for Review</div>
+              <div className="next-task-meta mono">Your manager will review the diff, run checks, and approve or request changes. Check "My Manager" for status updates.</div>
             </div>
 
             <div className="modal-actions">

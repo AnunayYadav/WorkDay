@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import type { EmployeeState } from '../../../types';
 import { CloudStorage } from '../../../lib/supabase';
+import { useToast } from '../../../lib/toast';
 
 interface AreaHRDashboardProps {
   employee: EmployeeState;
 }
 
 export const AreaHRDashboard: React.FC<AreaHRDashboardProps> = ({ employee }) => {
+  const { showToast } = useToast();
   const [employees, setEmployees] = useState<EmployeeState[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedContractEmp, setSelectedContractEmp] = useState<EmployeeState | null>(null);
+  const [promotingEmpId, setPromotingEmpId] = useState<string | null>(null);
 
   // Announcement state
   const [announcementContent, setAnnouncementContent] = useState('');
@@ -311,6 +314,116 @@ export const AreaHRDashboard: React.FC<AreaHRDashboardProps> = ({ employee }) =>
                 );
               })}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Compensation & Leveling Governance */}
+      <div style={{
+        marginTop: '1.5rem',
+        background: 'rgba(255, 255, 255, 0.02)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+        borderRadius: '10px',
+        padding: '1.25rem'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div>
+            <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a', letterSpacing: '0.05em' }}>COMPENSATION & LEVELING</span>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#f4f4f5', margin: '0.2rem 0 0 0' }}>Career Levels & Salary Bands</h3>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem', marginBottom: '1.25rem' }}>
+          {[
+            { level: 'L1', title: 'Junior', salary: '$85k – $110k', equity: '0.05%', xpReq: 0 },
+            { level: 'L2', title: 'Mid', salary: '$115k – $145k', equity: '0.12%', xpReq: 500 },
+            { level: 'L3', title: 'Senior', salary: '$150k – $190k', equity: '0.25%', xpReq: 1200 },
+            { level: 'L4', title: 'Staff', salary: '$195k – $240k', equity: '0.45%', xpReq: 2500 },
+            { level: 'L5', title: 'Director', salary: '$250k+', equity: '0.75%', xpReq: 5000 }
+          ].map(band => (
+            <div key={band.level} style={{
+              padding: '0.75rem',
+              borderRadius: '8px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+              textAlign: 'center'
+            }}>
+              <span className="mono" style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f4f4f5', display: 'block' }}>{band.level}</span>
+              <span style={{ fontSize: '0.72rem', color: '#a1a1aa', display: 'block', marginBottom: '0.35rem' }}>{band.title}</span>
+              <span style={{ fontSize: '0.72rem', color: '#d4d4d8', display: 'block', fontWeight: 500 }}>{band.salary}</span>
+              <span className="mono" style={{ fontSize: '0.65rem', color: '#71717a', display: 'block', marginTop: '0.2rem' }}>Equity: {band.equity}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Promotion Evaluation */}
+        <div>
+          <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a', letterSpacing: '0.05em', display: 'block', marginBottom: '0.6rem' }}>PROMOTION EVALUATION</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {employees.filter(emp => emp.empId !== employee.empId).map(emp => {
+              const xp = emp.totalXp || 200;
+              const currentLevel = emp.selectedRole?.level || 'LEVEL 1 · JUNIOR';
+              const levelNum = currentLevel.includes('1') ? 1 : currentLevel.includes('2') ? 2 : currentLevel.includes('3') ? 3 : currentLevel.includes('4') ? 4 : 5;
+              const nextThreshold = levelNum === 1 ? 500 : levelNum === 2 ? 1200 : levelNum === 3 ? 2500 : levelNum === 4 ? 5000 : null;
+              const eligible = nextThreshold !== null && xp >= nextThreshold;
+
+              return (
+                <div key={emp.empId} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.6rem 0.8rem', borderRadius: '6px',
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.82rem', color: '#e4e4e7', fontWeight: 500 }}>{emp.fullName}</span>
+                    <span className="mono" style={{ fontSize: '0.7rem', color: '#71717a', marginLeft: '0.5rem' }}>{emp.empId} · {xp} XP · L{levelNum}</span>
+                  </div>
+                  {eligible ? (
+                    <button
+                      type="button"
+                      disabled={promotingEmpId === emp.empId}
+                      onClick={async () => {
+                        setPromotingEmpId(emp.empId);
+                        try {
+                          await CloudStorage.saveEmployee({ ...emp, selectedRole: { ...emp.selectedRole, level: `LEVEL ${levelNum + 1}` } } as any);
+                          showToast({
+                            title: 'Promotion Approved',
+                            message: `${emp.fullName} has been promoted to Level ${levelNum + 1}.`,
+                            type: 'success'
+                          });
+                          const refreshed = await CloudStorage.listProfiles();
+                          setEmployees(refreshed);
+                        } catch {
+                          showToast({ title: 'Error', message: 'Promotion failed. Please try again.', type: 'error' });
+                        } finally {
+                          setPromotingEmpId(null);
+                        }
+                      }}
+                      style={{
+                        padding: '0.3rem 0.65rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 500,
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        color: '#d4d4d8', cursor: 'pointer',
+                        transition: 'background 0.15s ease'
+                      }}
+                    >
+                      {promotingEmpId === emp.empId ? 'Promoting...' : `Promote to L${levelNum + 1}`}
+                    </button>
+                  ) : nextThreshold !== null ? (
+                    <span className="mono" style={{ fontSize: '0.68rem', color: '#52525b' }}>
+                      {nextThreshold - xp} XP to L{levelNum + 1}
+                    </span>
+                  ) : (
+                    <span className="mono" style={{ fontSize: '0.68rem', color: '#52525b' }}>Max Level</span>
+                  )}
+                </div>
+              );
+            })}
+            {employees.filter(emp => emp.empId !== employee.empId).length === 0 && (
+              <p style={{ fontSize: '0.78rem', color: '#71717a', textAlign: 'center', padding: '1rem 0' }}>
+                No employees registered for evaluation yet.
+              </p>
+            )}
           </div>
         </div>
       </div>
